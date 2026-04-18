@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase';
 import { formatPhone, formatDate, dateToISO, formatBusinessNumber } from '@/lib/format';
 import Icon from '@/components/Icon';
 import PhotoUpload, { type PhotoUploadHandle } from '@/components/PhotoUpload';
+import AddressSearch from '@/components/AddressSearch';
 import { ButtonSpinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -170,7 +171,7 @@ export default function InstitutionSignup() {
               <input type="text" value={form.directorName} onChange={(e) => set('directorName', e.target.value)} placeholder="대표자명" className="input-field" />
             </Field>
             <Field label="주소" required>
-              <input type="text" value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="서울시 강남구 역삼동 123-45" className="input-field" />
+              <AddressSearch value={form.address} onChange={(v) => set('address', v)} />
             </Field>
             <Field label="전화번호" required>
               <input type="tel" value={form.phone} onChange={(e) => set('phone', formatPhone(e.target.value))} placeholder="010-0000-0000" className="input-field" />

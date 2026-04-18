@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatPhone, formatDate, dateToISO, dateFromISO, formatBusinessNumber } from '@/lib/format';
 import Icon from '@/components/Icon';
 import PhotoUpload from '@/components/PhotoUpload';
+import AddressSearch from '@/components/AddressSearch';
 import { PageSpinner, ButtonSpinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
 
@@ -167,7 +168,7 @@ export default function EditProfile() {
               <input type="text" value={tForm.birthDate} onChange={(e) => setT('birthDate', formatDate(e.target.value))} placeholder="1990/01/15" maxLength={10} className="input-field" />
             </Field>
             <Field label="주소">
-              <input type="text" value={tForm.address} onChange={(e) => setT('address', e.target.value)} className="input-field" />
+              <AddressSearch value={tForm.address} onChange={(v) => setT('address', v)} />
             </Field>
             <Field label="전화번호">
               <input type="tel" value={tForm.phone} onChange={(e) => setT('phone', formatPhone(e.target.value))} className="input-field" />
@@ -213,7 +214,7 @@ export default function EditProfile() {
               <input type="text" value={iForm.directorName} onChange={(e) => setI('directorName', e.target.value)} className="input-field" />
             </Field>
             <Field label="주소">
-              <input type="text" value={iForm.address} onChange={(e) => setI('address', e.target.value)} className="input-field" />
+              <AddressSearch value={iForm.address} onChange={(v) => setI('address', v)} />
             </Field>
             <Field label="전화번호">
               <input type="tel" value={iForm.phone} onChange={(e) => setI('phone', formatPhone(e.target.value))} className="input-field" />

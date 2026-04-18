@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/Icon';
+import { useToast } from '@/components/Toast';
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -14,6 +15,7 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile, hasResume, hasPosting, signOut, loading } = useAuth();
+  const { toast } = useToast();
   const isHome = pathname === '/';
 
   useEffect(() => {
@@ -32,8 +34,8 @@ export default function Header() {
 
   const handleSignOut = async () => {
     await signOut();
-    router.push('/');
-    router.refresh();
+    toast('로그아웃되었습니다');
+    window.location.href = '/';
   };
 
   return (
