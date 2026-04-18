@@ -49,23 +49,23 @@ export default function Home() {
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #EAF5EC 0%, #F7FAF6 260px)' }}>
       {/* Hero */}
-      <section className="max-w-[1200px] mx-auto px-4 pt-10 pb-6">
+      <section className="max-w-[1200px] mx-auto px-3 sm:px-4 pt-6 sm:pt-10 pb-6">
         <div className="bg-white rounded-2xl md:rounded-3xl grid md:grid-cols-[1fr_410px] items-stretch gap-0 overflow-hidden shadow-[0_6px_24px_rgba(102,196,119,0.12)]">
-          <div className="p-5 md:pl-10 md:py-12 md:pr-4">
-            <div className="inline-flex items-center gap-1.5 bg-[#EAF5EC] text-[#4EA85E] px-3 py-1 rounded-full text-xs font-semibold mb-3">
+          <div className="p-4 sm:p-5 md:pl-10 md:py-12 md:pr-4">
+            <div className="inline-flex items-center gap-1.5 bg-[#EAF5EC] text-[#4EA85E] px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold mb-3">
               <Icon name="leaf" size={14} />
               선생님과 유치원을 잇는 따뜻한 연결
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-snug">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground leading-snug">
               오늘도 아이들과 만날
               <br />
               <span className="text-[#4EA85E]">우리 선생님</span>을 찾고 있어요
             </h1>
-            <p className="text-sm text-muted mt-3">전국 유치원 채용부터 간편 지원까지, 교집합 하나면 충분해요.</p>
-            <form className="mt-5 flex items-center bg-[#F7FAF6] border-2 border-[#A5D6A7] rounded-full pl-4 md:pl-5 pr-1.5 py-1.5 w-full max-w-[520px]" action="/jobs">
-              <Icon name="search" size={18} className="text-[#4EA85E] mr-2 flex-shrink-0" />
-              <input name="q" type="text" placeholder="유치원명, 지역, 키워드" className="flex-1 min-w-0 bg-transparent text-sm focus:outline-none placeholder:text-muted" />
-              <button className="bg-[#66c477] hover:bg-[#4EA85E] text-white text-sm font-semibold px-4 md:px-5 py-2 rounded-full flex-shrink-0">검색</button>
+            <p className="text-xs sm:text-sm text-muted mt-2 sm:mt-3">전국 유치원 채용부터 간편 지원까지, 교집합 하나면 충분해요.</p>
+            <form className="mt-4 sm:mt-5 flex items-center bg-[#F7FAF6] border-2 border-[#A5D6A7] rounded-full pl-3 sm:pl-5 pr-1 sm:pr-1.5 py-1 sm:py-1.5 w-full max-w-[520px]" action="/jobs">
+              <Icon name="search" size={16} className="text-[#4EA85E] mr-1.5 sm:mr-2 flex-shrink-0" />
+              <input name="q" type="text" placeholder="유치원, 지역, 키워드" className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm focus:outline-none placeholder:text-muted" />
+              <button className="bg-[#66c477] hover:bg-[#4EA85E] text-white text-xs sm:text-sm font-semibold px-3 sm:px-5 py-1.5 sm:py-2 rounded-full flex-shrink-0">검색</button>
             </form>
           </div>
           <div className="relative hidden md:block min-h-[320px]">
@@ -75,7 +75,7 @@ export default function Home() {
       </section>
 
       {/* CTA banners — 유저 타입에 따라 본인 것만 표시, 비로그인은 둘 다 */}
-      <section className="max-w-[1200px] mx-auto px-4 py-4">
+      <section className="max-w-[1200px] mx-auto px-3 sm:px-4 py-4">
         <div className={`grid gap-3 ${userType ? '' : 'md:grid-cols-2'}`}>
           {userType !== 'institution' && (
             <div className="relative rounded-2xl bg-[#A5D6A7]/40 p-5 overflow-hidden">
@@ -97,7 +97,7 @@ export default function Home() {
       </section>
 
       {/* Position chips */}
-      <section className="max-w-[1200px] mx-auto px-4 py-4">
+      <section className="max-w-[1200px] mx-auto px-3 sm:px-4 py-4">
         <p className="text-sm font-bold text-foreground mb-3">어떤 자리 찾고 있어요?</p>
         <div className="grid grid-cols-3 md:grid-cols-6 gap-2.5">
           {positionChips.map((p) => {
@@ -114,7 +114,7 @@ export default function Home() {
       </section>
 
       {/* Region chips */}
-      <section className="max-w-[1200px] mx-auto px-4 py-3">
+      <section className="max-w-[1200px] mx-auto px-3 sm:px-4 py-3">
         <div className="flex gap-2 overflow-x-auto pb-1">
           {regionChips.map((r, i) => (
             <Link key={r} href={`/jobs?region=${encodeURIComponent(r)}`}
@@ -127,7 +127,7 @@ export default function Home() {
       </section>
 
       {/* Job cards */}
-      <section className="max-w-[1200px] mx-auto px-4 py-6 pb-16">
+      <section className="max-w-[1200px] mx-auto px-3 sm:px-4 py-6 pb-16">
         <div className="flex items-end justify-between mb-4">
           <div>
             <p className="text-xs text-[#4EA85E] font-semibold mb-0.5">추천 공고</p>
