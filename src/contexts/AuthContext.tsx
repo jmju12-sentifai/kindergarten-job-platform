@@ -35,74 +35,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading: true,
   });
 
-  const supabaseRef = useRef(createClient());
-  const supabase = supabaseRef.current;
+  const supabase = createClient();
+  const initializedRef = useRef(false);
 
-  const fetchProfile = useCallback(async (userId: string, retries = 3): Promise<{
-    profile: Profile | null;
-    teacherProfile: TeacherProfile | null;
-    institutionProfile: InstitutionProfile | null;
-    hasResume: boolean;
-    hasPosting: boolean;
-  }> => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    // 가입 직후 trigger가 아직 안 끝났을 수 있음 → retry
-    if (!profile && retries > 0) {
-      await new Promise((r) => setTimeout(r, 500));
-      return fetchProfile(userId, retries - 1);
-    }
-    if (!profile) return { profile: null, teacherProfile: null, institutionProfile: null, hasResume: false, hasPosting: false };
-
-    let teacherProfile: TeacherProfile | null = null;
-    let institutionProfile: InstitutionProfile | null = null;
-
-    if (profile.user_type === 'teacher') {
-      const { data } = await supabase
-        .from('teacher_profiles')
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
-      teacherProfile = data;
 
-      // teacher_profiles가 아직 insert 안 됐을 수 있음 → retry
-      if (!teacherProfile && retries > 0) {
-        await new Promise((r) => setTimeout(r, 500));
-        return fetchProfile(userId, retries - 1);
+      if (!profile) return { profile: null, teacherProfile: null, institutionProfile: null, hasResume: false, hasPosting: false };
+
+      let teacherProfile: TeacherProfile | null = null;
+      let institutionProfile: InstitutionProfile | null = null;
+      let hasResume = false;
+      let hasPosting = false;
+
+      if (profile.user_type === 'teacher') {
+        const { data } = await supabase.from('teacher_profiles').select('*').eq('id', userId).single();
+        teacherProfile = data;
+        const { count } = await supabase.from('resumes').select('id', { count: 'exact', head: true }).eq('teacher_id', userId);
+        hasResume = (count ?? 0) > 0;
+      } else if (profile.user_type === 'institution') {
+        const { data } = await supabase.from('institution_profiles').select('*').eq('id', userId).single();
+        institutionProfile = data;
+        const { count } = await supabase.from('postings').select('id', { count: 'exact', head: true }).eq('institution_id', userId);
+        hasPosting = (count ?? 0) > 0;
       }
-    } else {
-      const { data } = await supabase
-        .from('institution_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      institutionProfile = data;
 
-      if (!institutionProfile && retries > 0) {
-        await new Promise((r) => setTimeout(r, 500));
-        return fetchProfile(userId, retries - 1);
-      }
+      return { profile, teacherProfile, institutionProfile, hasResume, hasPosting };
+    } catch {
+      return { profile: null, teacherProfile: null, institutionProfile: null, hasResume: false, hasPosting: false };
     }
-
-    let hasResume = false;
-    let hasPosting = false;
-    if (profile.user_type === 'teacher') {
-      const { count } = await supabase.from('resumes').select('id', { count: 'exact', head: true }).eq('teacher_id', userId);
-      hasResume = (count ?? 0) > 0;
-    } else if (profile.user_type === 'institution') {
-      // 만료 안 된 공고가 있는지 체크
-      const oneMonthAgo = new Date();
-      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      const { count } = await supabase.from('postings').select('id', { count: 'exact', head: true })
-        .eq('institution_id', userId).gte('deadline', oneMonthAgo.toISOString().split('T')[0]);
-      hasPosting = (count ?? 0) > 0;
-    }
-
-    return { profile, teacherProfile, institutionProfile, hasResume, hasPosting };
   }, [supabase]);
 
   const refreshProfile = useCallback(async () => {
@@ -113,43 +79,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, fetchProfile]);
 
   useEffect(() => {
-    let handled = false;
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
-    // 3초 타임아웃 — Supabase 느려도 페이지는 표시
+    // 최대 3초 안에 반드시 loading 해제
     const timeout = setTimeout(() => {
-      if (!handled) {
-        handled = true;
-        setState((prev) => ({ ...prev, loading: false }));
-      }
+      setState((prev) => {
+        if (prev.loading) return { ...prev, loading: false };
+        return prev;
+      });
     }, 3000);
 
-    // 초기 세션 확인
-    supabase.auth.getSession().then(async ({ data: { session } }: { data: { session: Session | null } }) => {
-      if (handled && !session) return;
+    supabase.auth.getSession().then(async ({ data }: { data: { session: Session | null } }) => {
+      const session = data.session;
+      clearTimeout(timeout);
+
       if (session?.user) {
-        handled = true;
-        clearTimeout(timeout);
-        // 세션 먼저 반영 (로딩 해제) → 프로필은 백그라운드로
         setState((prev) => ({ ...prev, user: session.user, session, loading: false }));
-        const profiles = await fetchProfile(session.user.id, 1);
+        // 프로필은 백그라운드
+        const profiles = await fetchProfile(session.user.id);
         setState((prev) => ({ ...prev, ...profiles }));
       } else {
-        handled = true;
-        clearTimeout(timeout);
         setState((prev) => ({ ...prev, loading: false }));
       }
+    }).catch(() => {
+      clearTimeout(timeout);
+      setState((prev) => ({ ...prev, loading: false }));
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: string, session: Session | null) => {
         if (event === 'SIGNED_IN' && session?.user) {
           setState((prev) => ({ ...prev, user: session.user, session, loading: false }));
-          const profiles = await fetchProfile(session.user.id, 1);
+          const profiles = await fetchProfile(session.user.id);
           setState((prev) => ({ ...prev, ...profiles }));
         } else if (event === 'SIGNED_OUT') {
           setState({
             user: null, session: null, profile: null,
-            teacherProfile: null, institutionProfile: null, hasResume: false, hasPosting: false, loading: false,
+            teacherProfile: null, institutionProfile: null,
+            hasResume: false, hasPosting: false, loading: false,
           });
         }
       }
