@@ -1,26 +1,89 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-background: #F7FAF6;
+  --color-foreground: #1F2B1F;
+  --color-primary: #66c477;
+  --color-primary-dark: #4EA85E;
+  --color-primary-light: #A5D6A7;
+  --color-primary-soft: #a7dba7;
+  --color-secondary: #EAF5EC;
+  --color-accent: #66c477;
+  --color-card: #FFFFFF;
+  --color-border: #E3EADF;
+  --color-muted: #7A857A;
+  --color-success: #2E8B57;
+  --color-danger: #D94040;
+  --color-white: #FFFFFF;
+  --color-badge-dday: #E86830;
+
+  --font-sans: 'Pretendard Variable', Pretendard, var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+::selection {
+  background: var(--color-primary-light);
+  color: var(--color-foreground);
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+.input-field {
+  width: 100%;
+  height: 42px;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 12px;
+  padding-right: 12px;
+  background: #F7FAF6;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 14px;
+  transition: border-color 0.15s;
+}
+.input-field:focus {
+  outline: none;
+  border-color: #66c477;
+}
+textarea.input-field {
+  height: auto;
+  min-height: 80px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media print {
+  header, footer, nav, .no-print { display: none !important; }
+  body { background: white !important; min-height: auto !important; }
+  main { padding: 0 !important; }
+  .print-resume {
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
 }
