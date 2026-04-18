@@ -8,6 +8,7 @@ import { formatPhone, formatDate, dateToISO, dateFromISO } from '@/lib/format';
 import Icon from '@/components/Icon';
 import PhotoUpload from '@/components/PhotoUpload';
 import { PageSpinner, ButtonSpinner } from '@/components/Spinner';
+import type { Resume } from '@/types/database';
 import { useToast } from '@/components/Toast';
 
 interface Certificate { name: string; issuer: string }
@@ -66,7 +67,7 @@ export default function ResumeEdit() {
       .select('*')
       .eq('teacher_id', user.id)
       .single()
-      .then(({ data }) => {
+      .then(({ data }: { data: Resume | null }) => {
         if (data) {
           setExistingId(data.id);
           setName(data.name);

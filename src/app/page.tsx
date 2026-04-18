@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import Icon from '@/components/Icon';
-import { PageSpinner } from '@/components/Spinner';
+import Spinner from '@/components/Spinner';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PostingWithPositions } from '@/types/database';
@@ -36,13 +36,11 @@ export default function Home() {
       .gte('deadline', oneMonthAgo.toISOString().split('T')[0])
       .order('created_at', { ascending: false })
       .limit(6)
-      .then(({ data }) => {
-        if (data) setPostings(data as unknown as PostingWithPositions[]);
+      .then(({ data }: { data: PostingWithPositions[] | null }) => {
+        if (data) setPostings(data);
         setLoading(false);
       });
   }, []);
-
-  if (loading) return <PageSpinner />;
 
   const filteredPostings = tab === '전체'
     ? postings
@@ -52,8 +50,8 @@ export default function Home() {
     <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #EAF5EC 0%, #F7FAF6 260px)' }}>
       {/* Hero */}
       <section className="max-w-[1200px] mx-auto px-4 pt-10 pb-6">
-        <div className="bg-white rounded-3xl grid md:grid-cols-[1fr_410px] items-stretch gap-0 overflow-hidden shadow-[0_6px_24px_rgba(102,196,119,0.12)]">
-          <div className="p-6 md:pl-10 md:py-12 md:pr-4">
+        <div className="bg-white rounded-2xl md:rounded-3xl grid md:grid-cols-[1fr_410px] items-stretch gap-0 overflow-hidden shadow-[0_6px_24px_rgba(102,196,119,0.12)]">
+          <div className="p-5 md:pl-10 md:py-12 md:pr-4">
             <div className="inline-flex items-center gap-1.5 bg-[#EAF5EC] text-[#4EA85E] px-3 py-1 rounded-full text-xs font-semibold mb-3">
               <Icon name="leaf" size={14} />
               선생님과 유치원을 잇는 따뜻한 연결
@@ -64,10 +62,10 @@ export default function Home() {
               <span className="text-[#4EA85E]">우리 선생님</span>을 찾고 있어요
             </h1>
             <p className="text-sm text-muted mt-3">전국 유치원 채용부터 간편 지원까지, 교집합 하나면 충분해요.</p>
-            <form className="mt-5 flex items-center bg-[#F7FAF6] border-2 border-[#A5D6A7] rounded-full pl-5 pr-1.5 py-1.5 max-w-[520px]" action="/jobs">
+            <form className="mt-5 flex items-center bg-[#F7FAF6] border-2 border-[#A5D6A7] rounded-full pl-4 md:pl-5 pr-1.5 py-1.5 w-full max-w-[520px]" action="/jobs">
               <Icon name="search" size={18} className="text-[#4EA85E] mr-2 flex-shrink-0" />
-              <input name="q" type="text" placeholder="유치원명, 지역, 키워드로 검색" className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-muted" />
-              <button className="bg-[#66c477] hover:bg-[#4EA85E] text-white text-sm font-semibold px-5 py-2 rounded-full">찾아보기</button>
+              <input name="q" type="text" placeholder="유치원명, 지역, 키워드" className="flex-1 min-w-0 bg-transparent text-sm focus:outline-none placeholder:text-muted" />
+              <button className="bg-[#66c477] hover:bg-[#4EA85E] text-white text-sm font-semibold px-4 md:px-5 py-2 rounded-full flex-shrink-0">검색</button>
             </form>
           </div>
           <div className="relative hidden md:block min-h-[320px]">
@@ -138,7 +136,11 @@ export default function Home() {
           <Link href="/jobs" className="text-xs font-semibold text-[#4EA85E] hover:underline">전체보기 →</Link>
         </div>
 
-        {filteredPostings.length > 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <Spinner size={28} className="text-[#66c477]" />
+          </div>
+        ) : filteredPostings.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredPostings.map((posting) => {
               const d = Math.max(0, Math.ceil((new Date(posting.deadline).getTime() - Date.now()) / 86400000));

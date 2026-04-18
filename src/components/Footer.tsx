@@ -5,8 +5,8 @@ export default function Footer() {
   return (
     <footer className="bg-white border-t border-border mt-auto">
       <div className="max-w-[1200px] mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-          <div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+          <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-1.5 mb-2">
               <Image src="/logo1_gyo.png" alt="교집합" width={22} height={22} />
               <p className="font-bold text-primary-dark">교집합</p>

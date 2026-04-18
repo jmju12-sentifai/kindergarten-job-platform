@@ -35,16 +35,16 @@ export default function JobDetailPage() {
       .select('*, position_entries(*), institution_profiles!inner(*)')
       .eq('id', postingId)
       .single()
-      .then(({ data }) => { setPosting(data as typeof posting); setLoading(false); });
+      .then(({ data }: { data: typeof posting }) => { setPosting(data); setLoading(false); });
   }, [postingId]);
 
   useEffect(() => {
     if (!user || profile?.user_type !== 'teacher') return;
     const supabase = createClient();
     supabase.from('resumes').select('*').eq('teacher_id', user.id).single()
-      .then(({ data }) => setResume(data));
+      .then(({ data }: { data: Resume | null }) => setResume(data));
     supabase.from('applications').select('position_entry_id').eq('posting_id', postingId).eq('teacher_id', user.id)
-      .then(({ data }) => { if (data) setAppliedPositions(data.map((a) => a.position_entry_id)); });
+      .then(({ data }: { data: { position_entry_id: string }[] | null }) => { if (data) setAppliedPositions(data.map((a) => a.position_entry_id)); });
   }, [user, profile, postingId]);
 
   const handleApply = (pe: PositionEntry) => {
@@ -110,7 +110,7 @@ export default function JobDetailPage() {
         <section className="bg-white border border-border rounded-xl overflow-hidden mb-4">
           <div className="flex">
             {/* 사진 */}
-            <Link href={`/institutions/${posting.institution_id}`} className="w-[160px] h-[160px] bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 border-r border-border overflow-hidden">
+            <Link href={`/institutions/${posting.institution_id}`} className="w-[160px] min-h-[160px] self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 border-r border-border overflow-hidden">
               {inst.photos?.[0] ? (
                 <img src={inst.photos[0]} alt="" className="w-full h-full object-cover" />
               ) : (

@@ -19,8 +19,8 @@ export default function TalentsPage() {
     supabase.from('resumes')
       .select('*, teacher_profiles(*)')
       .order('updated_at', { ascending: false })
-      .then(({ data }) => {
-        setResumes((data as ResumeWithProfile[] | null) ?? []);
+      .then(({ data }: { data: ResumeWithProfile[] | null }) => {
+        setResumes(data ?? []);
         setLoading(false);
       });
   }, []);

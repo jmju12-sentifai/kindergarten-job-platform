@@ -166,7 +166,7 @@ export default function NewJobPage() {
         {inst && (
           <section className="bg-white border border-border rounded-xl overflow-hidden">
             <div className="flex">
-              <div className="w-[160px] h-[160px] bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 border-r border-border overflow-hidden">
+              <div className="w-[160px] min-h-[160px] self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 border-r border-border overflow-hidden">
                 {inst.photos?.[0] ? (
                   <img src={inst.photos[0]} alt="" className="w-full h-full object-cover" />
                 ) : (

@@ -113,21 +113,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, fetchProfile]);
 
   useEffect(() => {
+    let handled = false;
+
+    // 3초 타임아웃 — Supabase 느려도 페이지는 표시
+    const timeout = setTimeout(() => {
+      if (!handled) {
+        handled = true;
+        setState((prev) => ({ ...prev, loading: false }));
+      }
+    }, 3000);
+
     // 초기 세션 확인
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }: { data: { session: Session | null } }) => {
+      if (handled && !session) return;
       if (session?.user) {
-        const profiles = await fetchProfile(session.user.id);
-        setState({ user: session.user, session, ...profiles, loading: false });
+        handled = true;
+        clearTimeout(timeout);
+        // 세션 먼저 반영 (로딩 해제) → 프로필은 백그라운드로
+        setState((prev) => ({ ...prev, user: session.user, session, loading: false }));
+        const profiles = await fetchProfile(session.user.id, 1);
+        setState((prev) => ({ ...prev, ...profiles }));
       } else {
+        handled = true;
+        clearTimeout(timeout);
         setState((prev) => ({ ...prev, loading: false }));
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: string, session: Session | null) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          const profiles = await fetchProfile(session.user.id);
-          setState({ user: session.user, session, ...profiles, loading: false });
+          setState((prev) => ({ ...prev, user: session.user, session, loading: false }));
+          const profiles = await fetchProfile(session.user.id, 1);
+          setState((prev) => ({ ...prev, ...profiles }));
         } else if (event === 'SIGNED_OUT') {
           setState({
             user: null, session: null, profile: null,
@@ -137,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => { clearTimeout(timeout); subscription.unsubscribe(); };
   }, [supabase, fetchProfile]);
 
   const signOut = async () => {
