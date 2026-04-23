@@ -12,6 +12,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile, hasResume, hasPosting, signOut, loading } = useAuth();
@@ -33,9 +34,12 @@ export default function Header() {
   };
 
   const handleSignOut = async () => {
+    if (signingOut) return;
+    if (!confirm('로그아웃 하시겠습니까?')) return;
+    setSigningOut(true);
     await signOut();
     toast('로그아웃되었습니다');
-    window.location.href = '/';
+    window.location.replace('/');
   };
 
   return (
@@ -68,7 +72,13 @@ export default function Header() {
                     <Icon name="bell" size={18} />
                   </Link>
                   <Link href="/mypage" className="px-3 py-1.5 text-muted hover:text-foreground transition-colors">마이페이지</Link>
-                  <button onClick={handleSignOut} className="px-3 py-1.5 text-muted hover:text-foreground transition-colors">로그아웃</button>
+                  <button
+                    onClick={handleSignOut}
+                    disabled={signingOut}
+                    className="px-3 py-1.5 rounded text-muted hover:text-foreground hover:bg-background cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {signingOut ? '로그아웃 중...' : '로그아웃'}
+                  </button>
                 </>
               ) : (
                 <>
@@ -131,7 +141,13 @@ export default function Header() {
             ))}
             <div className="flex gap-2 pt-3">
               {user ? (
-                <button onClick={() => { handleSignOut(); setMenuOpen(false); }} className="flex-1 text-center py-2 text-xs font-semibold text-primary-dark border border-primary-dark rounded">로그아웃</button>
+                <button
+                  onClick={() => { setMenuOpen(false); handleSignOut(); }}
+                  disabled={signingOut}
+                  className="flex-1 text-center py-2 text-xs font-semibold text-primary-dark border border-primary-dark rounded disabled:opacity-50"
+                >
+                  {signingOut ? '로그아웃 중...' : '로그아웃'}
+                </button>
               ) : (
                 <>
                   <Link href="/signup" className="flex-1 text-center py-2 text-xs font-semibold text-primary-dark border border-primary-dark rounded" onClick={() => setMenuOpen(false)}>회원가입</Link>

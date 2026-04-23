@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { formatPhone, formatDate, dateToISO } from '@/lib/format';
@@ -21,9 +21,20 @@ interface Certificate { name: string }
 
 export default function TeacherSignup() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isKakao = searchParams.get('kakao') === '1';
   const { toast } = useToast();
-  const { refreshProfile } = useAuth();
+  const { user, refreshProfile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isKakao) return;
+    if (authLoading) return;
+    if (!user) {
+      toast('카카오 로그인 세션이 만료되었습니다.', 'error');
+      router.replace('/login');
+    }
+  }, [isKakao, authLoading, user, router, toast]);
   const photoRef = useRef<PhotoUploadHandle>(null);
   const { emailStatus, passwordValid, passwordMatch, checkEmail, checkPassword, checkPasswordMatch } = useFieldValidation();
   const [form, setForm] = useState({
@@ -46,17 +57,26 @@ export default function TeacherSignup() {
   const addCert = () => setCertificates((prev) => [...prev, { name: '' }]);
   const removeCert = (idx: number) => setCertificates((prev) => prev.filter((_, i) => i !== idx));
 
-  const handleKakao = () => toast('카카오 로그인은 준비 중입니다.', 'info');
+  const handleKakao = async () => {
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'kakao',
+      options: { redirectTo: `${window.location.origin}/auth/callback?role=teacher` },
+    });
+    if (error) toast('카카오 로그인을 시작할 수 없습니다.', 'error');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!form.email.trim()) { toast('이메일을 입력해주세요.', 'error'); return; }
-    if (!form.email.includes('@')) { toast('올바른 이메일 형식을 입력해주세요.', 'error'); return; }
-    if (emailStatus === 'taken') { toast('이미 사용 중인 이메일입니다.', 'error'); return; }
-    if (!form.password) { toast('비밀번호를 입력해주세요.', 'error'); return; }
-    if (form.password.length < 8) { toast('비밀번호는 8자 이상이어야 합니다.', 'error'); return; }
-    if (form.password !== form.passwordConfirm) { toast('비밀번호가 일치하지 않습니다.', 'error'); return; }
+    if (!isKakao) {
+      if (!form.email.trim()) { toast('이메일을 입력해주세요.', 'error'); return; }
+      if (!form.email.includes('@')) { toast('올바른 이메일 형식을 입력해주세요.', 'error'); return; }
+      if (emailStatus === 'taken') { toast('이미 사용 중인 이메일입니다.', 'error'); return; }
+      if (!form.password) { toast('비밀번호를 입력해주세요.', 'error'); return; }
+      if (form.password.length < 8) { toast('비밀번호는 8자 이상이어야 합니다.', 'error'); return; }
+      if (form.password !== form.passwordConfirm) { toast('비밀번호가 일치하지 않습니다.', 'error'); return; }
+    }
     if (!form.name.trim()) { toast('이름을 입력해주세요.', 'error'); return; }
     if (!form.birthDate.trim()) { toast('생년월일을 입력해주세요.', 'error'); return; }
     if (!form.address.trim()) { toast('주소를 입력해주세요.', 'error'); return; }
@@ -65,25 +85,31 @@ export default function TeacherSignup() {
     setLoading(true);
     const supabase = createClient();
 
-    const { data, error: authError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: { data: { user_type: 'teacher' } },
-    });
+    let userId: string | null = null;
+    if (isKakao) {
+      if (!user) { toast('세션이 만료되었습니다. 다시 로그인해주세요.', 'error'); setLoading(false); router.push('/login'); return; }
+      userId = user.id;
+    } else {
+      const { data, error: authError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: { user_type: 'teacher' } },
+      });
+      if (authError) { toast(authError.message, 'error'); setLoading(false); return; }
+      userId = data.user?.id ?? null;
+    }
 
-    if (authError) { toast(authError.message, 'error'); setLoading(false); return; }
-
-    if (data.user) {
+    if (userId) {
       // 사진 업로드 (가입 후 인증 상태에서)
       let uploadedPhotoUrl: string | null = null;
       if (photoRef.current) {
-        const urls = await photoRef.current.uploadFiles('avatars', data.user.id);
+        const urls = await photoRef.current.uploadFiles('avatars', userId);
         if (urls.length > 0) uploadedPhotoUrl = urls[0];
       }
 
       const validCerts = certificates.filter((c) => c.name.trim());
       await supabase.from('teacher_profiles').insert({
-        id: data.user.id,
+        id: userId,
         name: form.name,
         birth_date: dateToISO(form.birthDate),
         address: form.address,
@@ -110,17 +136,27 @@ export default function TeacherSignup() {
           <h1 className="text-xl font-bold text-foreground">선생님 계정 만들기</h1>
         </div>
 
-        <button onClick={handleKakao} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm mb-4" style={{ background: '#FEE500', color: '#191919' }}>
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1C4.58 1 1 3.8 1 7.28c0 2.24 1.49 4.2 3.74 5.32l-.96 3.53a.3.3 0 0 0 .45.33L8.3 13.9c.23.02.46.03.7.03 4.42 0 8-2.8 8-6.28S13.42 1 9 1Z" fill="#191919"/></svg>
-          카카오로 시작하기
-        </button>
+        {!isKakao && (
+          <>
+            <button onClick={handleKakao} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm mb-4" style={{ background: '#FEE500', color: '#191919' }}>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1C4.58 1 1 3.8 1 7.28c0 2.24 1.49 4.2 3.74 5.32l-.96 3.53a.3.3 0 0 0 .45.33L8.3 13.9c.23.02.46.03.7.03 4.42 0 8-2.8 8-6.28S13.42 1 9 1Z" fill="#191919"/></svg>
+              카카오로 시작하기
+            </button>
 
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 h-px bg-border" /><span className="text-xs text-muted">또는 이메일로 가입</span><div className="flex-1 h-px bg-border" />
-        </div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-border" /><span className="text-xs text-muted">또는 이메일로 가입</span><div className="flex-1 h-px bg-border" />
+            </div>
+          </>
+        )}
+
+        {isKakao && user?.email && (
+          <div className="bg-[#FFFBE5] border border-[#F5DC47] rounded-xl p-3 mb-4 text-xs text-foreground">
+            <b>{user.email}</b> 계정으로 연결됩니다. 아래 필수정보를 입력해주세요.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          {/* 계정 정보 */}
+          {!isKakao && (
           <div className="bg-white rounded-2xl p-6 border border-[#E3EADF] space-y-4">
             <h3 className="text-sm font-bold text-foreground">계정 정보</h3>
             <p className="text-[11px] text-muted -mt-3">로그인 시 사용할 이메일과 비밀번호입니다</p>
@@ -144,6 +180,7 @@ export default function TeacherSignup() {
               )}
             </Field>
           </div>
+          )}
 
           {/* 기본 정보 */}
           <div className="bg-white rounded-2xl p-6 border border-[#E3EADF] space-y-4">

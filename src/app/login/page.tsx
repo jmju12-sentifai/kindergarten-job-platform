@@ -1,21 +1,45 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { ButtonSpinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
 
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  email_exists: '이미 이메일로 가입된 계정이 있습니다. 기존 방식으로 로그인해주세요.',
+  oauth_failed: '카카오 로그인에 실패했습니다. 다시 시도해주세요.',
+  exchange_failed: '카카오 로그인 처리 중 오류가 발생했습니다.',
+  no_code: '카카오 로그인 응답이 올바르지 않습니다.',
+  no_email: '카카오 계정에서 이메일 정보를 가져오지 못했습니다.',
+};
+
 export default function Login() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleKakao = () => {
-    toast('카카오 로그인은 준비 중입니다.', 'info');
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err && OAUTH_ERROR_MESSAGES[err]) {
+      toast(OAUTH_ERROR_MESSAGES[err], 'error');
+      const url = new URL(window.location.href);
+      url.searchParams.delete('error');
+      window.history.replaceState(null, '', url.toString());
+    }
+  }, [searchParams, toast]);
+
+  const handleKakao = async () => {
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'kakao',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) toast('카카오 로그인을 시작할 수 없습니다.', 'error');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

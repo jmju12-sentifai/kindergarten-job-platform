@@ -1,9 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import Icon from '@/components/Icon';
 
 export default function SignupSplit() {
+  const searchParams = useSearchParams();
+  const kakaoSuffix = searchParams.get('kakao') === '1' ? '?kakao=1' : '';
   return (
     <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-4 py-12" style={{ background: 'linear-gradient(180deg, #EAF5EC 0%, #F7FAF6 300px)' }}>
       <div className="w-full max-w-[720px]">
@@ -14,7 +17,7 @@ export default function SignupSplit() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* 구직자 (왼쪽) */}
-          <Link href="/signup/teacher" className="group bg-white rounded-2xl p-8 border-2 border-[#E3EADF] hover:border-[#66c477] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all text-center">
+          <Link href={`/signup/teacher${kakaoSuffix}`} className="group bg-white rounded-2xl p-8 border-2 border-[#E3EADF] hover:border-[#66c477] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all text-center">
             <div className="w-16 h-16 rounded-full bg-[#EAF5EC] flex items-center justify-center text-[#4EA85E] mx-auto mb-4">
               <Icon name="user" size={32} stroke={1.6} />
             </div>
@@ -31,7 +34,7 @@ export default function SignupSplit() {
           </Link>
 
           {/* 구인자 (오른쪽) */}
-          <Link href="/signup/institution" className="group bg-white rounded-2xl p-8 border-2 border-[#E3EADF] hover:border-[#66c477] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all text-center">
+          <Link href={`/signup/institution${kakaoSuffix}`} className="group bg-white rounded-2xl p-8 border-2 border-[#E3EADF] hover:border-[#66c477] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all text-center">
             <div className="w-16 h-16 rounded-full bg-[#EAF5EC] flex items-center justify-center text-[#4EA85E] mx-auto mb-4">
               <Icon name="building" size={32} stroke={1.6} />
             </div>
