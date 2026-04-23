@@ -31,7 +31,7 @@ const statusColors: Record<ApplicationStatus, string> = {
 
 export default function MyPage() {
   const router = useRouter();
-  const { user, profile, teacherProfile, institutionProfile, loading: authLoading } = useAuth();
+  const { user, profile, teacherProfile, institutionProfile, loading: authLoading, profileLoaded } = useAuth();
   const supabase = createClient();
   const { toast } = useToast();
 
@@ -71,8 +71,14 @@ export default function MyPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || !profile) {
+    if (!user) {
       router.replace('/login');
+      return;
+    }
+    // 프로필 조회가 끝나기 전까지는 대기. 끝났는데 profile이 없으면 가입 흐름으로 보냄
+    if (!profileLoaded) return;
+    if (!profile) {
+      router.replace('/signup');
       return;
     }
 
@@ -121,7 +127,7 @@ export default function MyPage() {
     } else {
       fetchInstitutionData();
     }
-  }, [user, profile, authLoading, router, supabase]);
+  }, [user, profile, profileLoaded, authLoading, router, supabase]);
 
   const markAsViewed = async (applicationId: string) => {
     const app = institutionApps.find((a) => a.id === applicationId);

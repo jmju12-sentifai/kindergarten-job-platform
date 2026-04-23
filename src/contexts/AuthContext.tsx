@@ -14,6 +14,7 @@ interface AuthState {
   hasResume: boolean;
   hasPosting: boolean;
   loading: boolean;
+  profileLoaded: boolean;
 }
 
 interface AuthContextType extends AuthState {
@@ -33,59 +34,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hasResume: false,
     hasPosting: false,
     loading: true,
+    profileLoaded: false,
   });
 
   const supabase = createClient();
   const initializedRef = useRef(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+    const empty = { profile: null, teacherProfile: null, institutionProfile: null, hasResume: false, hasPosting: false };
+    const run = async () => {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
 
-      if (!profile) return { profile: null, teacherProfile: null, institutionProfile: null, hasResume: false, hasPosting: false };
+        if (!profile) return empty;
 
-      let teacherProfile: TeacherProfile | null = null;
-      let institutionProfile: InstitutionProfile | null = null;
-      let hasResume = false;
-      let hasPosting = false;
+        let teacherProfile: TeacherProfile | null = null;
+        let institutionProfile: InstitutionProfile | null = null;
+        let hasResume = false;
+        let hasPosting = false;
 
-      if (profile.user_type === 'teacher') {
-        const { data } = await supabase.from('teacher_profiles').select('*').eq('id', userId).single();
-        teacherProfile = data;
-        const { count } = await supabase.from('resumes').select('id', { count: 'exact', head: true }).eq('teacher_id', userId);
-        hasResume = (count ?? 0) > 0;
-      } else if (profile.user_type === 'institution') {
-        const { data } = await supabase.from('institution_profiles').select('*').eq('id', userId).single();
-        institutionProfile = data;
-        const { count } = await supabase.from('postings').select('id', { count: 'exact', head: true }).eq('institution_id', userId);
-        hasPosting = (count ?? 0) > 0;
+        if (profile.user_type === 'teacher') {
+          const { data } = await supabase.from('teacher_profiles').select('*').eq('id', userId).single();
+          teacherProfile = data;
+          const { count } = await supabase.from('resumes').select('id', { count: 'exact', head: true }).eq('teacher_id', userId);
+          hasResume = (count ?? 0) > 0;
+        } else if (profile.user_type === 'institution') {
+          const { data } = await supabase.from('institution_profiles').select('*').eq('id', userId).single();
+          institutionProfile = data;
+          const { count } = await supabase.from('postings').select('id', { count: 'exact', head: true }).eq('institution_id', userId);
+          hasPosting = (count ?? 0) > 0;
+        }
+
+        return { profile, teacherProfile, institutionProfile, hasResume, hasPosting };
+      } catch {
+        return empty;
       }
+    };
 
-      return { profile, teacherProfile, institutionProfile, hasResume, hasPosting };
-    } catch {
-      return { profile: null, teacherProfile: null, institutionProfile: null, hasResume: false, hasPosting: false };
-    }
+    // 5초 안에 응답 없으면 empty로 fallback — 무한 대기 차단
+    const timeout = new Promise<typeof empty>((resolve) => setTimeout(() => resolve(empty), 5000));
+    return Promise.race([run(), timeout]);
   }, [supabase]);
 
   const refreshProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const profiles = await fetchProfile(user.id);
-    setState((prev) => ({ ...prev, user, ...profiles }));
+    setState((prev) => ({ ...prev, user, ...profiles, profileLoaded: true }));
   }, [supabase, fetchProfile]);
 
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // 최대 3초 안에 반드시 loading 해제
+    // 최대 3초 안에 반드시 loading 해제 (세션 조회가 멈춰도 UI는 풀림)
     const timeout = setTimeout(() => {
       setState((prev) => {
-        if (prev.loading) return { ...prev, loading: false };
+        if (prev.loading) return { ...prev, loading: false, profileLoaded: true };
         return prev;
       });
     }, 3000);
@@ -93,31 +102,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(async ({ data }: { data: { session: Session | null } }) => {
       const session = data.session;
       clearTimeout(timeout);
+      if (typeof window !== 'undefined') {
+        const sbCookies = document.cookie.split(';').map((c) => c.trim().split('=')[0]).filter((n) => n.startsWith('sb-'));
+        console.log('[AuthContext] getSession', { hasSession: !!session, userId: session?.user?.id, sbCookies });
+      }
 
       if (session?.user) {
         setState((prev) => ({ ...prev, user: session.user, session, loading: false }));
         // 프로필은 백그라운드
         const profiles = await fetchProfile(session.user.id);
-        setState((prev) => ({ ...prev, ...profiles }));
+        setState((prev) => ({ ...prev, ...profiles, profileLoaded: true }));
       } else {
-        setState((prev) => ({ ...prev, loading: false }));
+        setState((prev) => ({ ...prev, loading: false, profileLoaded: true }));
       }
-    }).catch(() => {
+    }).catch((e: unknown) => {
       clearTimeout(timeout);
-      setState((prev) => ({ ...prev, loading: false }));
+      if (typeof window !== 'undefined') {
+        console.log('[AuthContext] getSession error', (e as Error)?.message);
+      }
+      setState((prev) => ({ ...prev, loading: false, profileLoaded: true }));
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: string, session: Session | null) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          setState((prev) => ({ ...prev, user: session.user, session, loading: false }));
+          setState((prev) => ({ ...prev, user: session.user, session, loading: false, profileLoaded: false }));
           const profiles = await fetchProfile(session.user.id);
-          setState((prev) => ({ ...prev, ...profiles }));
+          setState((prev) => ({ ...prev, ...profiles, profileLoaded: true }));
         } else if (event === 'SIGNED_OUT') {
           setState({
             user: null, session: null, profile: null,
             teacherProfile: null, institutionProfile: null,
-            hasResume: false, hasPosting: false, loading: false,
+            hasResume: false, hasPosting: false, loading: false, profileLoaded: true,
           });
         }
       }
@@ -127,7 +143,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, fetchProfile]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // scope: 'local' → 서버 호출 없이 브라우저 세션만 정리 (서버 hang 회피)
+    const signOutPromise = supabase.auth.signOut({ scope: 'local' });
+    const timeout = new Promise<{ error: null }>((resolve) =>
+      setTimeout(() => resolve({ error: null }), 2000)
+    );
+    await Promise.race([signOutPromise, timeout]);
+
+    // 방어적으로 남아있는 sb-*-auth-token 쿠키 직접 제거
+    try {
+      document.cookie.split(';').forEach((c) => {
+        const name = c.trim().split('=')[0];
+        if (name.startsWith('sb-')) {
+          document.cookie = `${name}=; path=/; max-age=0`;
+        }
+      });
+    } catch {
+      // ignore
+    }
+
+    // 로컬 상태 즉시 초기화 (onAuthStateChange 대기하지 않음)
+    setState({
+      user: null, session: null, profile: null,
+      teacherProfile: null, institutionProfile: null,
+      hasResume: false, hasPosting: false, loading: false, profileLoaded: true,
+    });
   };
 
   return (
