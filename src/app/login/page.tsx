@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
-import { ButtonSpinner } from '@/components/Spinner';
+import { ButtonSpinner, PageSpinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -15,7 +15,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   no_email: '카카오 계정에서 이메일 정보를 가져오지 못했습니다.',
 };
 
-export default function Login() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -101,5 +101,13 @@ export default function Login() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense fallback={<PageSpinner />}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { Suspense, useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
@@ -8,7 +8,7 @@ import { formatPhone, formatDate, dateToISO } from '@/lib/format';
 import Icon from '@/components/Icon';
 import PhotoUpload, { type PhotoUploadHandle } from '@/components/PhotoUpload';
 import AddressSearch from '@/components/AddressSearch';
-import { ButtonSpinner } from '@/components/Spinner';
+import { ButtonSpinner, PageSpinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFieldValidation } from '@/lib/useFieldValidation';
@@ -19,7 +19,7 @@ import { DEGREE_YEARS } from '@/constants/degreeYears';
 
 interface Certificate { name: string }
 
-export default function TeacherSignup() {
+function TeacherSignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isKakao = searchParams.get('kakao') === '1';
@@ -275,5 +275,13 @@ function Field({ label, required, children }: { label: string; required?: boolea
       <span className="text-xs font-semibold text-foreground">{label} {required && <span className="text-danger">*</span>}</span>
       <div className="mt-1">{children}</div>
     </label>
+  );
+}
+
+export default function TeacherSignup() {
+  return (
+    <Suspense fallback={<PageSpinner />}>
+      <TeacherSignupContent />
+    </Suspense>
   );
 }

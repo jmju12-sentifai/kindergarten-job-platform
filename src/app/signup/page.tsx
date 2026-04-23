@@ -1,10 +1,12 @@
 'use client';
 
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Icon from '@/components/Icon';
+import { PageSpinner } from '@/components/Spinner';
 
-export default function SignupSplit() {
+function SignupSplitContent() {
   const searchParams = useSearchParams();
   const kakaoSuffix = searchParams.get('kakao') === '1' ? '?kakao=1' : '';
   return (
@@ -57,5 +59,13 @@ export default function SignupSplit() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignupSplit() {
+  return (
+    <Suspense fallback={<PageSpinner />}>
+      <SignupSplitContent />
+    </Suspense>
   );
 }
