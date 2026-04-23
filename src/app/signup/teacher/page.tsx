@@ -13,8 +13,11 @@ import { useToast } from '@/components/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFieldValidation } from '@/lib/useFieldValidation';
 import FieldHint from '@/components/FieldHint';
+import { PHOTO_GUIDANCE } from '@/constants/photoGuidance';
+import { CERTIFICATES, CERT_OTHER, isFixedCertificate } from '@/constants/certificates';
+import { DEGREE_YEARS } from '@/constants/degreeYears';
 
-interface Certificate { name: string; issuer: string }
+interface Certificate { name: string }
 
 export default function TeacherSignup() {
   const router = useRouter();
@@ -33,14 +36,14 @@ export default function TeacherSignup() {
     passwordConfirm: '',
     university: '',
   });
-  const [certificates, setCertificates] = useState<Certificate[]>([{ name: '', issuer: '' }]);
+  const [certificates, setCertificates] = useState<Certificate[]>([{ name: '' }]);
 
   const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
 
-  const setCert = (idx: number, key: keyof Certificate, val: string) => {
-    setCertificates((prev) => prev.map((c, i) => (i === idx ? { ...c, [key]: val } : c)));
+  const setCertName = (idx: number, val: string) => {
+    setCertificates((prev) => prev.map((c, i) => (i === idx ? { name: val } : c)));
   };
-  const addCert = () => setCertificates((prev) => [...prev, { name: '', issuer: '' }]);
+  const addCert = () => setCertificates((prev) => [...prev, { name: '' }]);
   const removeCert = (idx: number) => setCertificates((prev) => prev.filter((_, i) => i !== idx));
 
   const handleKakao = () => toast('카카오 로그인은 준비 중입니다.', 'info');
@@ -167,20 +170,52 @@ export default function TeacherSignup() {
                 <span className="text-xs font-semibold text-foreground">소유 자격</span>
                 <button type="button" onClick={addCert} className="text-[11px] font-semibold text-[#4EA85E] hover:underline">+ 추가</button>
               </div>
-              {certificates.map((cert, i) => (
-                <div key={i} className="flex gap-2 mb-2">
-                  <input type="text" value={cert.name} onChange={(e) => setCert(i, 'name', e.target.value)} placeholder="자격증명 (예: 유치원정교사2급)" className="input-field flex-1 min-w-0" />
-                  <input type="text" value={cert.issuer} onChange={(e) => setCert(i, 'issuer', e.target.value)} placeholder="발급기관" className="input-field flex-1 min-w-0" />
-                  {certificates.length > 1 && (
-                    <button type="button" onClick={() => removeCert(i)} className="px-2 text-muted hover:text-danger text-sm flex-shrink-0">x</button>
+              {certificates.map((cert, i) => {
+                const isOther = cert.name !== '' && !isFixedCertificate(cert.name);
+                const selectValue = cert.name === '' ? '' : isOther ? CERT_OTHER : cert.name;
+                return (
+                <div key={i} className="space-y-2 mb-2">
+                  <div className="flex gap-2">
+                    <select
+                      value={selectValue}
+                      onChange={(e) => {
+                        if (e.target.value === CERT_OTHER) setCertName(i, ' ');
+                        else setCertName(i, e.target.value);
+                      }}
+                      className="input-field flex-1 min-w-0"
+                    >
+                      <option value="">자격증 선택</option>
+                      {CERTIFICATES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                      <option value={CERT_OTHER}>{CERT_OTHER}</option>
+                    </select>
+                    {certificates.length > 1 && (
+                      <button type="button" onClick={() => removeCert(i)} className="px-2 text-muted hover:text-danger text-sm flex-shrink-0">x</button>
+                    )}
+                  </div>
+                  {isOther && (
+                    <input
+                      type="text"
+                      value={cert.name.trim() === '' ? '' : cert.name}
+                      onChange={(e) => setCertName(i, e.target.value)}
+                      placeholder="직접 입력 (예: 놀이교육지도사)"
+                      className="input-field w-full"
+                      autoFocus
+                    />
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div>
               <span className="text-xs font-semibold text-foreground mb-1 block">프로필 사진 (선택)</span>
               <PhotoUpload ref={photoRef} label="프로필 사진을 선택해주세요" iconName="user" deferred />
+              <p className="text-[11px] text-muted mt-1.5 leading-[1.5]">
+                {PHOTO_GUIDANCE.teacherProfile.description}<br />
+                권장 사이즈: {PHOTO_GUIDANCE.teacherProfile.recommendedSize} ({PHOTO_GUIDANCE.teacherProfile.aspectRatio})
+              </p>
             </div>
           </div>
 

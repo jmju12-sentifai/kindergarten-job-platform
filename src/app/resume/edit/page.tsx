@@ -10,11 +10,13 @@ import PhotoUpload from '@/components/PhotoUpload';
 import { PageSpinner, ButtonSpinner } from '@/components/Spinner';
 import type { Resume } from '@/types/database';
 import { useToast } from '@/components/Toast';
+import { CERTIFICATES, CERT_OTHER, isFixedCertificate } from '@/constants/certificates';
+import { CAREER_ROLES } from '@/constants/positions';
+import { DEGREE_YEARS } from '@/constants/degreeYears';
 
-interface Certificate { name: string; issuer: string }
-interface Experience { institution: string; startDate: string; endDate: string; isCurrent: boolean; role: string; age_group: string; description: string }
+interface Certificate { name: string; needs_reentry?: boolean }
+interface Experience { institution: string; startDate: string; endDate: string; isCurrent: boolean; role: string; age_group: string }
 
-const roleOptions = ['담임교사', '부담임교사', '보조교사', '원감', '방과후교사', '특별활동강사'];
 const ageGroupOptions = ['만3세', '만4세', '만5세', '혼합연령', '무관'];
 
 export default function ResumeEdit() {
@@ -34,7 +36,10 @@ export default function ResumeEdit() {
   const [email, setEmail] = useState('');
   const [university, setUniversity] = useState('');
   const [portfolio, setPortfolio] = useState('');
-  const [certificates, setCertificates] = useState<Certificate[]>([{ name: '', issuer: '' }]);
+  const [certificates, setCertificates] = useState<Certificate[]>([{ name: '' }]);
+  const [universityName, setUniversityName] = useState('');
+  const [major, setMajor] = useState('');
+  const [degreeYears, setDegreeYears] = useState<number | ''>('');
   const [introduction, setIntroduction] = useState('');
   const [experiences, setExperiences] = useState<Experience[]>([]);
 
@@ -85,23 +90,25 @@ export default function ResumeEdit() {
               isCurrent: (exp.isCurrent as boolean) || false,
               role: (exp.role as string) || '담임교사',
               age_group: (exp.age_group as string) || '무관',
-              description: (exp.description as string) || '',
             })));
           }
           if (data.affiliation) setUniversity(data.affiliation);
+          if (data.university_name) setUniversityName(data.university_name);
+          if (data.major) setMajor(data.major);
+          if (data.degree_years) setDegreeYears(data.degree_years);
         }
         setLoading(false);
       });
   }, [user, authLoading, teacherProfile, profile, supabase]);
 
-  const setCert = (i: number, key: keyof Certificate, val: string) =>
-    setCertificates((prev) => prev.map((c, j) => (j === i ? { ...c, [key]: val } : c)));
-  const addCert = () => setCertificates((prev) => [...prev, { name: '', issuer: '' }]);
+  const setCertName = (i: number, val: string) =>
+    setCertificates((prev) => prev.map((c, j) => (j === i ? { name: val } : c)));
+  const addCert = () => setCertificates((prev) => [...prev, { name: '' }]);
   const removeCert = (i: number) => setCertificates((prev) => prev.filter((_, j) => j !== i));
 
   const setExp = (i: number, key: keyof Experience, val: string | boolean) =>
     setExperiences((prev) => prev.map((e, j) => (j === i ? { ...e, [key]: val } : e)));
-  const addExp = () => setExperiences((prev) => [...prev, { institution: '', startDate: '', endDate: '', isCurrent: false, role: '담임교사', age_group: '무관', description: '' }]);
+  const addExp = () => setExperiences((prev) => [...prev, { institution: '', startDate: '', endDate: '', isCurrent: false, role: '담임교사', age_group: '무관' }]);
   const removeExp = (i: number) => setExperiences((prev) => prev.filter((_, j) => j !== i));
 
   const handleSave = async () => {
@@ -116,9 +123,12 @@ export default function ResumeEdit() {
       affiliation: university || null,
       introduction,
       portfolio: portfolio || null,
-      certificates: certificates.filter((c) => c.name.trim()),
+      certificates: certificates.filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim() })),
       experiences,
       photo_url: photoUrl,
+      university_name: universityName || null,
+      major: major || null,
+      degree_years: degreeYears || null,
     };
 
     if (existingId) {
@@ -136,40 +146,11 @@ export default function ResumeEdit() {
 
   const handleDownloadPDF = async () => {
     if (!resumeRef.current) return;
-    const html2canvas = (await import('html2canvas')).default;
-    const { jsPDF } = await import('jspdf');
-
-    const clone = resumeRef.current.cloneNode(true) as HTMLElement;
-    clone.style.position = 'fixed';
-    clone.style.left = '0';
-    clone.style.top = '0';
-    clone.style.width = '800px';
-    clone.style.zIndex = '-9999';
-    clone.style.background = '#ffffff';
-    document.body.appendChild(clone);
-
-    const canvas = await html2canvas(clone, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0, scrollX: 0, windowWidth: 800 });
-    document.body.removeChild(clone);
-
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfW = pdf.internal.pageSize.getWidth();
-    const pdfH = (canvas.height * pdfW) / canvas.width;
-    const pageH = pdf.internal.pageSize.getHeight();
-
-    if (pdfH <= pageH) {
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
-    } else {
-      let offset = 0;
-      while (offset < pdfH) {
-        if (offset > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, -offset, pdfW, pdfH);
-        offset += pageH;
-      }
-    }
-
-    pdf.save(`이력서_${name}.pdf`);
+    const { generateResumePdf } = await import('@/lib/resumePdf');
+    await generateResumePdf(resumeRef.current, `이력서_${name}.pdf`);
   };
+
+  const handlePrint = () => window.print();
 
   const calcAge = (bd: string) => {
     const iso = dateToISO(bd);
@@ -192,9 +173,14 @@ export default function ResumeEdit() {
           <p className="text-xs text-muted mt-0.5">회원가입 정보가 자동으로 입력됩니다</p>
         </div>
         {existingId && (
-          <button onClick={handleDownloadPDF} className="flex items-center gap-1 px-3 py-2 text-xs font-semibold border border-[#4EA85E] text-[#4EA85E] rounded-lg hover:bg-[#EAF5EC]">
-            <Icon name="pencil" size={14} /> PDF 다운로드
-          </button>
+          <div className="flex items-center gap-2 no-print">
+            <button onClick={handleDownloadPDF} className="flex items-center gap-1 px-3 py-2 text-xs font-semibold border border-[#4EA85E] text-[#4EA85E] rounded-lg hover:bg-[#EAF5EC]">
+              <Icon name="pencil" size={14} /> PDF 다운로드
+            </button>
+            <button onClick={handlePrint} className="flex items-center gap-1 px-3 py-2 text-xs font-semibold border border-border text-foreground rounded-lg hover:bg-[#F7FAF6]">
+              <Icon name="pencil" size={14} /> 인쇄
+            </button>
+          </div>
         )}
       </div>
 
@@ -252,7 +238,14 @@ export default function ResumeEdit() {
                 <input type="text" value={address} readOnly className="input-field bg-gray-50 text-muted" />
               </Field>
               <Field label="졸업 대학교">
-                <input type="text" value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="OO대학교 유아교육과" className="input-field" />
+                <div className="grid grid-cols-[1fr_1fr_80px] gap-2">
+                  <input type="text" value={universityName} onChange={(e) => setUniversityName(e.target.value)} placeholder="대학교명" className="input-field" />
+                  <input type="text" value={major} onChange={(e) => setMajor(e.target.value)} placeholder="학과" className="input-field" />
+                  <select value={degreeYears} onChange={(e) => setDegreeYears(e.target.value ? Number(e.target.value) : '')} className="input-field">
+                    <option value="">년제</option>
+                    {DEGREE_YEARS.map((y) => <option key={y} value={y}>{y}년제</option>)}
+                  </select>
+                </div>
               </Field>
             </div>
           </div>
@@ -269,15 +262,41 @@ export default function ResumeEdit() {
             </button>
           </div>
           <div className="space-y-2">
-            {certificates.map((cert, i) => (
-              <div key={i} className="flex gap-3 items-center">
-                <input type="text" value={cert.name} onChange={(e) => setCert(i, 'name', e.target.value)} placeholder="자격증명 (예: 유치원정교사2급)" className="input-field flex-1 min-w-0" />
-                <input type="text" value={cert.issuer} onChange={(e) => setCert(i, 'issuer', e.target.value)} placeholder="발급기관 (예: 교육부)" className="input-field flex-1 min-w-0" />
-                {certificates.length > 1 && (
-                  <button type="button" onClick={() => removeCert(i)} className="px-2 text-muted hover:text-danger text-sm flex-shrink-0">x</button>
+            {certificates.map((cert, i) => {
+              const isOther = cert.name !== '' && !isFixedCertificate(cert.name);
+              const selectValue = cert.name === '' ? '' : isOther ? CERT_OTHER : cert.name;
+              return (
+              <div key={i} className="space-y-2">
+                <div className="flex gap-3 items-center">
+                  <select
+                    value={selectValue}
+                    onChange={(e) => {
+                      if (e.target.value === CERT_OTHER) setCertName(i, ' ');
+                      else setCertName(i, e.target.value);
+                    }}
+                    className="input-field flex-1 min-w-0"
+                  >
+                    <option value="">자격증 선택</option>
+                    {CERTIFICATES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    <option value={CERT_OTHER}>{CERT_OTHER}</option>
+                  </select>
+                  {certificates.length > 1 && (
+                    <button type="button" onClick={() => removeCert(i)} className="px-2 text-muted hover:text-danger text-sm flex-shrink-0">x</button>
+                  )}
+                </div>
+                {isOther && (
+                  <input
+                    type="text"
+                    value={cert.name.trim() === '' ? '' : cert.name}
+                    onChange={(e) => setCertName(i, e.target.value)}
+                    placeholder="직접 입력 (예: 놀이교육지도사)"
+                    className="input-field w-full"
+                    autoFocus
+                  />
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -333,10 +352,10 @@ export default function ResumeEdit() {
                       <span className="text-[11px] text-foreground whitespace-nowrap">재직중</span>
                     </label>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <Field label="직무">
                       <select value={exp.role} onChange={(e) => setExp(i, 'role', e.target.value)} className="input-field">
-                        {roleOptions.map((r) => <option key={r}>{r}</option>)}
+                        {CAREER_ROLES.map((r) => <option key={r}>{r}</option>)}
                       </select>
                     </Field>
                     <Field label="담당 연령">
@@ -345,14 +364,6 @@ export default function ResumeEdit() {
                       </select>
                     </Field>
                   </div>
-                  <Field label="업무 내용 (선택)">
-                    <textarea
-                      value={exp.description}
-                      onChange={(e) => setExp(i, 'description', e.target.value)}
-                      placeholder="담당했던 주요 업무, 프로그램 운영, 성과 등을 간략히 작성해주세요."
-                      className="input-field min-h-[60px]"
-                    />
-                  </Field>
                 </div>
               ))}
             </div>
@@ -387,14 +398,19 @@ export default function ResumeEdit() {
       </div>
 
       {/* 하단 고정 버튼 */}
-      <div className="sticky bottom-0 bg-background/90 backdrop-blur-sm pt-4 pb-6 mt-4 flex gap-3">
+      <div className="sticky bottom-0 bg-background/90 backdrop-blur-sm pt-4 pb-6 mt-4 flex gap-3 no-print">
         <button onClick={handleSave} disabled={saving} className="flex-1 py-3 bg-[#66c477] hover:bg-[#4EA85E] text-white font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
           {saving ? <ButtonSpinner /> : '이력서 저장'}
         </button>
         {existingId && (
-          <button onClick={handleDownloadPDF} className="px-6 py-3 border border-[#4EA85E] text-[#4EA85E] font-semibold rounded-xl hover:bg-[#EAF5EC]">
-            PDF
-          </button>
+          <>
+            <button onClick={handleDownloadPDF} className="px-5 py-3 border border-[#4EA85E] text-[#4EA85E] font-semibold rounded-xl hover:bg-[#EAF5EC]">
+              PDF
+            </button>
+            <button onClick={handlePrint} className="px-5 py-3 border border-border text-foreground font-semibold rounded-xl hover:bg-[#F7FAF6]">
+              인쇄
+            </button>
+          </>
         )}
       </div>
     </div>

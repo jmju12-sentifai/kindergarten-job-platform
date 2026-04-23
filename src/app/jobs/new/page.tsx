@@ -9,9 +9,8 @@ import Icon from '@/components/Icon';
 import { PageSpinner, ButtonSpinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
 import { formatDate, dateToISO } from '@/lib/format';
-import type { PositionType, Posting, PositionEntry } from '@/types/database';
-
-const POSITIONS: PositionType[] = ['원감', '담임교사', '보조교사', '방과후교사', '특별활동강사'];
+import type { Posting, PositionEntry } from '@/types/database';
+import { POSITIONS, POSITION_COLORS, type PositionType } from '@/constants/positions';
 
 export default function NewJobPage() {
   const router = useRouter();
@@ -32,7 +31,6 @@ export default function NewJobPage() {
   const [areaInput, setAreaInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(true);
-  const [lockedUntil, setLockedUntil] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile && profile.user_type !== 'institution') router.push('/');
@@ -49,20 +47,25 @@ export default function NewJobPage() {
         .single();
 
       if (data) {
-        const posting = data as Posting & { position_entries: PositionEntry[]; locked_until?: string; commute_areas?: string[] };
+        const posting = data as Posting & { position_entries: PositionEntry[]; commute_areas?: string[] };
         setExistingPostingId(posting.id);
         setTitle(posting.title);
         setDescription(posting.description);
-        // deadline은 자동 한달이므로 기존값 로드 불필요
-        if (posting.locked_until) setLockedUntil(posting.locked_until);
         if (posting.commute_areas) setCommuteAreas(posting.commute_areas);
         if (posting.position_entries.length > 0) {
-          setSelectedPositions(posting.position_entries.map((pe) => pe.position));
+          setSelectedPositions(posting.position_entries.map((pe) => pe.position as PositionType));
         }
       }
       setLoadingExisting(false);
     })();
   }, [user]);
+
+  // 신규 생성 차단 여부 — 기존 공고 없을 때만 체크
+  const lockUntil = institutionProfile?.last_posting_locked_until;
+  const isNewBlocked = !existingPostingId && lockUntil && new Date(lockUntil) > new Date();
+  const hoursLeft = isNewBlocked && lockUntil
+    ? Math.ceil((new Date(lockUntil).getTime() - Date.now()) / (1000 * 60 * 60))
+    : 0;
 
   const togglePosition = (pos: PositionType) => {
     if (selectedPositions.includes(pos)) {
@@ -85,8 +88,6 @@ export default function NewJobPage() {
 
   const removeArea = (idx: number) => setCommuteAreas((prev) => prev.filter((_, i) => i !== idx));
 
-  const isLocked = lockedUntil && new Date(lockedUntil) > new Date();
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || submitting) return;
@@ -96,35 +97,41 @@ export default function NewJobPage() {
     if (!description.trim()) { toast('공고 내용을 입력해주세요.', 'error'); return; }
     if (!deadline.trim()) { toast('마감일을 입력해주세요.', 'error'); return; }
 
-    if (existingPostingId && isLocked) {
-      toast('공고 등록 후 48시간 이내에는 수정할 수 없습니다.', 'error');
+    if (isNewBlocked) {
+      toast(`공고 등록 후 48시간 동안은 새 공고를 올릴 수 없습니다. (${hoursLeft}시간 남음)`, 'error');
       return;
     }
 
     if (!existingPostingId) {
-      if (!confirm('공고를 등록하시겠습니까?\n등록 후 48시간 동안 수정이 불가합니다.')) return;
+      if (!confirm('공고를 등록하시겠습니까?\n등록 후 48시간 동안은 다른 공고를 올릴 수 없습니다. 수정/삭제는 언제든 가능합니다.')) return;
     }
 
     setSubmitting(true);
     const supabase = createClient();
-    const newLockedUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
     const deadlineISO = dateToISO(deadline);
 
     let postingId = existingPostingId;
 
     if (postingId) {
+      // 수정: 락 갱신 없이 저장만
       const { error } = await supabase.from('postings')
-        .update({ title, description, deadline: deadlineISO, locked_until: newLockedUntil, commute_areas: commuteAreas })
+        .update({ title, description, deadline: deadlineISO, commute_areas: commuteAreas })
         .eq('id', postingId);
       if (error) { toast('공고 수정 중 오류가 발생했습니다.', 'error'); setSubmitting(false); return; }
       await supabase.from('position_entries').delete().eq('posting_id', postingId);
     } else {
+      // 신규: posting insert + institution 락 갱신
       const { data, error } = await supabase.from('postings')
-        .insert({ institution_id: user.id, title, description, deadline: deadlineISO, locked_until: newLockedUntil, commute_areas: commuteAreas })
+        .insert({ institution_id: user.id, title, description, deadline: deadlineISO, commute_areas: commuteAreas })
         .select('id')
         .single();
       if (error) { toast('공고 등록 중 오류가 발생했습니다.', 'error'); setSubmitting(false); return; }
       postingId = data?.id ?? null;
+
+      const newLockUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      await supabase.from('institution_profiles')
+        .update({ last_posting_locked_until: newLockUntil })
+        .eq('id', user.id);
     }
 
     if (!postingId) { toast('공고 처리 중 오류가 발생했습니다.', 'error'); setSubmitting(false); return; }
@@ -158,7 +165,17 @@ export default function NewJobPage() {
       <h1 className="text-lg font-bold text-foreground mb-1">
         {existingPostingId ? '채용공고 수정' : '채용공고 등록'}
       </h1>
-      <p className="text-xs text-muted mb-6">공고 내용을 작성해주세요.</p>
+      <p className="text-xs text-muted mb-3">공고 내용을 작성해주세요.</p>
+
+      {!existingPostingId && (
+        <div className={`rounded-lg p-3 mb-4 text-xs leading-[1.7] ${isNewBlocked ? 'bg-[#E86830]/10 border border-[#E86830]/30 text-[#E86830]' : 'bg-[#EAF5EC] border border-[#A5D6A7]/50 text-foreground/80'}`}>
+          {isNewBlocked ? (
+            <>공고 등록 후 48시간 동안은 새 공고를 올릴 수 없습니다. <b>{hoursLeft}시간 남음.</b></>
+          ) : (
+            <>공고 등록 후 48시간 동안은 다른 공고를 올릴 수 없습니다. 수정과 삭제는 언제든 가능합니다.<br />담임교사와 부담임교사 모두 구하실 땐 한 공고에 함께 등록해 주세요.</>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
 
@@ -166,9 +183,9 @@ export default function NewJobPage() {
         {inst && (
           <section className="bg-white border border-border rounded-xl overflow-hidden">
             <div className="flex">
-              <div className="w-[160px] min-h-[160px] self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 border-r border-border overflow-hidden">
+              <div className="w-[240px] min-h-[240px] self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 border-r border-border overflow-hidden">
                 {inst.photos?.[0] ? (
-                  <img src={inst.photos[0]} alt="" className="w-full h-full object-cover" />
+                  <img src={inst.photos[0]} alt="" className="w-full h-full object-contain" />
                 ) : (
                   <div className="text-center">
                     <Icon name="home" size={40} className="text-muted/20 mx-auto" />
@@ -187,6 +204,16 @@ export default function NewJobPage() {
                     <span className="text-muted w-[70px] flex-shrink-0">연락처</span>
                     <span className="text-foreground">{inst.phone}</span>
                   </div>
+                  <div className="flex">
+                    <span className="text-muted w-[70px] flex-shrink-0">이메일</span>
+                    <span className="text-foreground">{inst.email}</span>
+                  </div>
+                  {inst.nearby_stations && inst.nearby_stations.length > 0 && (
+                    <div className="flex">
+                      <span className="text-muted w-[70px] flex-shrink-0">가까운 역</span>
+                      <span className="text-foreground">{inst.nearby_stations.filter(Boolean).join(', ')}</span>
+                    </div>
+                  )}
                   <div className="flex">
                     <span className="text-muted w-[70px] flex-shrink-0">운영반</span>
                     <span className="text-foreground">{inst.class_count || '-'}개</span>
@@ -210,10 +237,11 @@ export default function NewJobPage() {
             <div className="flex flex-wrap gap-2">
               {POSITIONS.map((pos) => {
                 const selected = selectedPositions.includes(pos);
+                const colors = POSITION_COLORS[pos];
                 return (
                   <button key={pos} type="button" onClick={() => togglePosition(pos)}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
-                      selected ? 'bg-[#4EA85E] text-white border-[#4EA85E]' : 'bg-white text-foreground/70 border-border hover:border-[#A5D6A7]'
+                      selected ? `${colors.bg} ${colors.text} border-current` : 'bg-white text-foreground/70 border-border hover:border-[#A5D6A7]'
                     }`}>
                     {pos} {selected && 'x'}
                   </button>
@@ -222,12 +250,15 @@ export default function NewJobPage() {
             </div>
             {selectedPositions.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {selectedPositions.map((pos, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#EAF5EC] text-[#4EA85E] text-[11px] font-semibold rounded-full">
-                    {pos}
-                    <button type="button" onClick={() => setSelectedPositions((prev) => prev.filter((_, j) => j !== i))} className="hover:text-danger">x</button>
-                  </span>
-                ))}
+                {selectedPositions.map((pos, i) => {
+                  const colors = POSITION_COLORS[pos];
+                  return (
+                    <span key={i} className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full ${colors.bg} ${colors.text}`}>
+                      {pos}
+                      <button type="button" onClick={() => setSelectedPositions((prev) => prev.filter((_, j) => j !== i))} className="hover:text-danger">x</button>
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -281,7 +312,7 @@ export default function NewJobPage() {
           <Link href="/jobs" className="flex-1 py-3 text-center border border-border text-foreground/70 font-medium rounded-xl hover:bg-white text-sm">
             취소
           </Link>
-          <button type="submit" disabled={submitting}
+          <button type="submit" disabled={submitting || Boolean(isNewBlocked)}
             className="flex-1 py-3 bg-[#66c477] hover:bg-[#4EA85E] text-white font-semibold rounded-xl disabled:opacity-50 text-sm flex items-center justify-center">
             {submitting ? <ButtonSpinner /> : existingPostingId ? '공고 수정' : '공고 등록'}
           </button>

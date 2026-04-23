@@ -13,6 +13,7 @@ import { useToast } from '@/components/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFieldValidation } from '@/lib/useFieldValidation';
 import FieldHint from '@/components/FieldHint';
+import { PHOTO_GUIDANCE } from '@/constants/photoGuidance';
 
 export default function InstitutionSignup() {
   const router = useRouter();
@@ -85,13 +86,20 @@ export default function InstitutionSignup() {
         uploadedPhotos = await photoRef.current.uploadFiles('photos', data.user.id);
       }
 
-      const addressParts = form.address.split(' ');
+      const parts = form.address.split(' ');
+      const region = parts[0] || '';
+      const sigungu = parts[1] || '';
+      const gu = (parts[2] && /(구|군)$/.test(parts[2])) ? parts[2] : null;
+      const shortParts = [region, sigungu, gu].filter(Boolean);
       await supabase.from('institution_profiles').insert({
         id: data.user.id,
         name: form.name,
         type: form.type,
         address: form.address,
-        address_short: addressParts.slice(0, 2).join(' '),
+        address_short: shortParts.join(' '),
+        address_region: region || null,
+        address_sigungu: sigungu || null,
+        address_gu: gu,
         phone: form.phone,
         business_number: form.businessNumber,
         email: form.email,
@@ -202,6 +210,10 @@ export default function InstitutionSignup() {
             <div>
               <span className="text-xs font-semibold text-foreground mb-1 block">전경 사진 (선택)</span>
               <PhotoUpload ref={photoRef} label="기관 사진을 선택해주세요 (여러 장 가능)" multiple iconName="home" deferred />
+              <p className="text-[11px] text-muted mt-1.5 leading-[1.5]">
+                {PHOTO_GUIDANCE.institution.description}<br />
+                권장 사이즈: {PHOTO_GUIDANCE.institution.recommendedSize} ({PHOTO_GUIDANCE.institution.aspectRatio})
+              </p>
             </div>
           </div>
 

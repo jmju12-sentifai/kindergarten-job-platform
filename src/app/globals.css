@@ -18,6 +18,18 @@
   --color-white: #FFFFFF;
   --color-badge-dday: #E86830;
 
+  /* 카테고리 파스텔 5색 + 잉크색 (교사 유형 배지, 악센트 공용) */
+  --color-pastel-lavender:     #E8E1F5;
+  --color-pastel-lavender-ink: #6B5B9C;
+  --color-pastel-peach:        #FDE4D4;
+  --color-pastel-peach-ink:    #C66A3C;
+  --color-pastel-mint:         #D4EBDC;
+  --color-pastel-mint-ink:     #3F7F55;
+  --color-pastel-sky:          #D6E9F5;
+  --color-pastel-sky-ink:      #4A7A9C;
+  --color-pastel-lemon:        #FAF0C4;
+  --color-pastel-lemon-ink:    #9C8539;
+
   --font-sans: 'Pretendard Variable', Pretendard, var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -85,5 +97,18 @@ textarea.input-field {
     box-shadow: none !important;
     margin: 0 !important;
     max-width: 100% !important;
+    position: relative;
+  }
+  .print-resume::before {
+    content: '';
+    position: absolute;
+    top: 8mm;
+    left: 8mm;
+    width: 18mm;
+    height: 18mm;
+    background: url('/logo1_gyo.png') no-repeat center / contain;
+    opacity: 0.9;
+    z-index: 9999;
+    pointer-events: none;
   }
 }

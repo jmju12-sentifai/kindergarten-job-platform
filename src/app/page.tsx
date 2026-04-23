@@ -8,19 +8,20 @@ import Spinner from '@/components/Spinner';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PostingWithPositions } from '@/types/database';
+import { POSITIONS, POSITION_COLORS, type PositionType } from '@/constants/positions';
+import { REGION_LIST, REGIONS } from '@/constants/regions';
 
-const positionChips = [
-  { label: '담임교사', icon: 'user' as const },
-  { label: '보조교사', icon: 'users' as const },
-  { label: '방과후교사', icon: 'clock' as const },
-  { label: '원감', icon: 'star' as const },
-  { label: '특별활동', icon: 'sparkle' as const },
-  { label: '무관', icon: 'check' as const },
-];
-const regionChips = ['서울', '경기', '인천', '부산', '대구', '대전', '광주', '세종'];
+const positionIcons: Record<PositionType, 'star' | 'user' | 'users' | 'clock' | 'sparkle'> = {
+  '원감': 'star',
+  '담임교사': 'user',
+  '부담임+방과후교사': 'users',
+  '방과후교사': 'clock',
+  '단기대체교사': 'sparkle',
+};
 
 export default function Home() {
   const [tab, setTab] = useState('전체');
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [postings, setPostings] = useState<PostingWithPositions[]>([]);
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
@@ -98,32 +99,59 @@ export default function Home() {
 
       {/* Position chips */}
       <section className="max-w-[1200px] mx-auto px-3 sm:px-4 py-4">
-        <p className="text-sm font-bold text-foreground mb-3">어떤 자리 찾고 있어요?</p>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2.5">
-          {positionChips.map((p) => {
-            const active = tab === p.label || (p.label === '무관' && tab === '전체');
+        <p className="text-sm font-bold text-foreground mb-3">어느 교사로 일하시길 원하세요?</p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+          {POSITIONS.map((pos) => {
+            const active = tab === pos;
+            const colors = POSITION_COLORS[pos];
             return (
-              <button key={p.label} onClick={() => setTab(p.label === '무관' ? '전체' : p.label)}
-                className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl border-2 transition-all ${active ? 'bg-[#EAF5EC] border-[#66c477] text-[#4EA85E]' : 'bg-white border-transparent text-foreground/70 hover:border-[#A5D6A7]'}`}>
-                <Icon name={p.icon} size={24} stroke={1.8} />
-                <span className="text-xs font-semibold">{p.label}</span>
+              <button key={pos} onClick={() => setTab(active ? '전체' : pos)}
+                className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl border-2 transition-all ${colors.bg} ${active ? `${colors.text} border-current shadow-sm` : `${colors.text}/80 border-transparent hover:${colors.border}`}`}>
+                <Icon name={positionIcons[pos]} size={24} stroke={1.8} />
+                <span className="text-xs font-semibold">{pos}</span>
               </button>
             );
           })}
         </div>
       </section>
 
-      {/* Region chips */}
+      {/* Region chips — 상위 + 하위 (경기) */}
       <section className="max-w-[1200px] mx-auto px-3 sm:px-4 py-3">
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {regionChips.map((r, i) => (
-            <Link key={r} href={`/jobs?region=${encodeURIComponent(r)}`}
-              className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-white border border-[#E3EADF] hover:bg-[#EAF5EC] hover:border-[#A5D6A7]"
-              style={i === 0 ? { background: '#a7dba7', color: '#1F2B1F', borderColor: '#a7dba7' } : {}}>
-              {r}
-            </Link>
-          ))}
+          {REGION_LIST.map((r) => {
+            const hasSubregions = REGIONS[r] && REGIONS[r].length > 0;
+            const active = selectedRegion === r;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => {
+                  if (hasSubregions) {
+                    setSelectedRegion(active ? null : r);
+                  } else {
+                    window.location.href = `/jobs?region=${encodeURIComponent(r)}`;
+                  }
+                }}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${active ? 'bg-[#a7dba7] text-foreground border-[#a7dba7]' : 'bg-white text-foreground border-[#E3EADF] hover:bg-[#EAF5EC] hover:border-[#A5D6A7]'}`}
+              >
+                {r}{hasSubregions ? ' ▾' : ''}
+              </button>
+            );
+          })}
         </div>
+        {selectedRegion && REGIONS[selectedRegion]?.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1 mt-2">
+            {REGIONS[selectedRegion].map((sub) => (
+              <Link
+                key={sub}
+                href={`/jobs?region=${encodeURIComponent(selectedRegion)}&sub=${encodeURIComponent(sub)}`}
+                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#E3EADF] hover:bg-[#EAF5EC] hover:border-[#A5D6A7]"
+              >
+                {sub}
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Job cards */}
@@ -158,11 +186,20 @@ export default function Home() {
                       {d > 0 ? `D-${d}` : '마감'}
                     </span>
                   </div>
-                  <h3 className="text-[15px] font-bold text-foreground mb-2 leading-snug line-clamp-2">{posting.title}</h3>
+                  <h3 className="text-[15px] font-bold text-foreground mb-1 leading-snug line-clamp-2">{posting.title}</h3>
+                  {posting.commute_areas && posting.commute_areas.length > 0 && (
+                    <p className="text-[11px] text-muted/70 mb-2">
+                      출퇴근 {posting.commute_areas.slice(0, 2).join(', ')}
+                      {posting.commute_areas.length > 2 && ` 외 ${posting.commute_areas.length - 2}`}
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-1.5">
-                    {posting.position_entries.map((pe) => (
-                      <span key={pe.id} className="text-[11px] px-2 py-0.5 bg-[#EAF5EC] text-[#4EA85E] rounded-full font-semibold">{pe.position}</span>
-                    ))}
+                    {posting.position_entries.map((pe) => {
+                      const colors = POSITION_COLORS[pe.position as PositionType];
+                      return (
+                        <span key={pe.id} className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${colors?.bg ?? 'bg-[#EAF5EC]'} ${colors?.text ?? 'text-[#4EA85E]'}`}>{pe.position}</span>
+                      );
+                    })}
                   </div>
                 </Link>
               );

@@ -9,6 +9,7 @@ import Icon from '@/components/Icon';
 import { PageSpinner, ButtonSpinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
 import type { PostingWithPositions, PositionEntry, Resume } from '@/types/database';
+import { POSITION_COLORS, type PositionType } from '@/constants/positions';
 
 function getDaysLeft(deadline: string) {
   return Math.max(0, Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
@@ -110,9 +111,9 @@ export default function JobDetailPage() {
         <section className="bg-white border border-border rounded-xl overflow-hidden mb-4">
           <div className="flex">
             {/* 사진 */}
-            <Link href={`/institutions/${posting.institution_id}`} className="w-[160px] min-h-[160px] self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 border-r border-border overflow-hidden">
+            <Link href={`/institutions/${posting.institution_id}`} className="w-[240px] min-h-[240px] self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 border-r border-border overflow-hidden">
               {inst.photos?.[0] ? (
-                <img src={inst.photos[0]} alt="" className="w-full h-full object-cover" />
+                <img src={inst.photos[0]} alt="" className="w-full h-full object-contain" />
               ) : (
                 <div className="text-center">
                   <Icon name="home" size={40} className="text-muted/20 mx-auto" />
@@ -139,6 +140,16 @@ export default function JobDetailPage() {
                   <span className="text-muted w-[70px] flex-shrink-0">연락처</span>
                   <span className="text-foreground">{inst.phone}</span>
                 </div>
+                <div className="flex">
+                  <span className="text-muted w-[70px] flex-shrink-0">이메일</span>
+                  <span className="text-foreground">{inst.email}</span>
+                </div>
+                {inst.nearby_stations && inst.nearby_stations.length > 0 && (
+                  <div className="flex">
+                    <span className="text-muted w-[70px] flex-shrink-0">가까운 역</span>
+                    <span className="text-foreground">{inst.nearby_stations.filter(Boolean).join(', ')}</span>
+                  </div>
+                )}
                 {inst.director_name && (
                   <div className="flex">
                     <span className="text-muted w-[70px] flex-shrink-0">원장</span>
@@ -171,11 +182,14 @@ export default function JobDetailPage() {
             <div className="mb-3">
               <p className="text-[11px] text-muted mb-1.5">모집교사</p>
               <div className="flex flex-wrap gap-1.5">
-                {positions.map((pe) => (
-                  <span key={pe.id} className="px-2.5 py-1 bg-[#EAF5EC] text-[#4EA85E] text-[11px] font-semibold rounded-full">
-                    {pe.position}
-                  </span>
-                ))}
+                {positions.map((pe) => {
+                  const colors = POSITION_COLORS[pe.position as PositionType];
+                  return (
+                    <span key={pe.id} className={`px-2.5 py-1 text-[11px] font-semibold rounded-full ${colors?.bg ?? 'bg-[#EAF5EC]'} ${colors?.text ?? 'text-[#4EA85E]'}`}>
+                      {pe.position}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}

@@ -6,10 +6,9 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import Icon from '@/components/Icon';
 import { PageSpinner } from '@/components/Spinner';
-import type { PostingWithPositions, PositionType } from '@/types/database';
-
-const REGIONS = ['서울', '경기', '인천', '부산', '대구', '대전', '광주'];
-const POSITIONS: PositionType[] = ['원감', '담임교사', '보조교사', '방과후교사', '특별활동강사'];
+import type { PostingWithPositions } from '@/types/database';
+import { POSITIONS, POSITION_COLORS, type PositionType } from '@/constants/positions';
+import { REGION_LIST, REGIONS } from '@/constants/regions';
 
 function getDaysLeft(deadline: string) {
   return Math.max(0, Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
@@ -19,12 +18,14 @@ function JobsContent() {
   const searchParams = useSearchParams();
   const initialQ = searchParams.get('q') || '';
   const initialRegion = searchParams.get('region') || '';
+  const initialSub = searchParams.get('sub') || '';
   const initialPosition = searchParams.get('position') || '';
 
   const [postings, setPostings] = useState<PostingWithPositions[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(initialQ);
   const [region, setRegion] = useState(initialRegion);
+  const [subRegion, setSubRegion] = useState(initialSub);
   const [position, setPosition] = useState(initialPosition);
   const [sort, setSort] = useState<'latest' | 'deadline'>('latest');
 
@@ -58,7 +59,18 @@ function JobsContent() {
     }
 
     if (region) {
-      list = list.filter((p) => p.institution_profiles.address_short.includes(region));
+      list = list.filter((p) => {
+        const inst = p.institution_profiles;
+        const matchRegion = inst.address_region
+          ? inst.address_region.includes(region)
+          : inst.address_short.includes(region);
+        if (!matchRegion) return false;
+        if (subRegion) {
+          return (inst.address_sigungu || '').includes(subRegion)
+            || inst.address_short.includes(subRegion);
+        }
+        return true;
+      });
     }
 
     if (position) {
@@ -74,15 +86,16 @@ function JobsContent() {
     }
 
     return list;
-  }, [postings, searchQuery, region, position, sort]);
+  }, [postings, searchQuery, region, subRegion, position, sort]);
 
   const clearFilters = () => {
     setSearchQuery('');
     setRegion('');
+    setSubRegion('');
     setPosition('');
   };
 
-  const hasFilters = searchQuery || region || position;
+  const hasFilters = searchQuery || region || subRegion || position;
 
   if (loading) {
     return <PageSpinner />;
@@ -116,37 +129,65 @@ function JobsContent() {
         >
           전체
         </button>
-        {POSITIONS.map((pos) => (
-          <button
-            key={pos}
-            onClick={() => setPosition(position === pos ? '' : pos)}
-            className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-              position === pos
-                ? 'bg-primary-dark text-white border-primary-dark'
-                : 'bg-white text-foreground/70 border-border hover:border-primary'
-            }`}
-          >
-            {pos}
-          </button>
-        ))}
+        {POSITIONS.map((pos) => {
+          const active = position === pos;
+          const colors = POSITION_COLORS[pos];
+          return (
+            <button
+              key={pos}
+              onClick={() => setPosition(active ? '' : pos)}
+              className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                active
+                  ? `${colors.bg} ${colors.text} border-current font-semibold`
+                  : 'bg-white text-foreground/70 border-border hover:border-primary'
+              }`}
+            >
+              {pos}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Region chips */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {REGIONS.map((r) => (
-          <button
-            key={r}
-            onClick={() => setRegion(region === r ? '' : r)}
-            className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
-              region === r
-                ? 'bg-secondary text-primary-dark border-primary font-semibold'
-                : 'bg-white text-muted border-border hover:border-primary/50'
-            }`}
-          >
-            {r}
-          </button>
-        ))}
+      {/* Region chips — 상위 + 하위 (경기) */}
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {REGION_LIST.map((r) => {
+          const hasSubregions = REGIONS[r] && REGIONS[r].length > 0;
+          const active = region === r;
+          return (
+            <button
+              key={r}
+              onClick={() => {
+                if (active) { setRegion(''); setSubRegion(''); }
+                else { setRegion(r); setSubRegion(''); }
+              }}
+              className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
+                active
+                  ? 'bg-secondary text-primary-dark border-primary font-semibold'
+                  : 'bg-white text-muted border-border hover:border-primary/50'
+              }`}
+            >
+              {r}{hasSubregions ? ' ▾' : ''}
+            </button>
+          );
+        })}
       </div>
+      {region && REGIONS[region] && REGIONS[region].length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-4">
+          {REGIONS[region].map((sub) => (
+            <button
+              key={sub}
+              onClick={() => setSubRegion(subRegion === sub ? '' : sub)}
+              className={`px-2 py-0.5 text-[10px] rounded-full border transition-colors ${
+                subRegion === sub
+                  ? 'bg-primary-dark text-white border-primary-dark'
+                  : 'bg-white text-muted border-border hover:border-primary/50'
+              }`}
+            >
+              {sub}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Sort + count */}
       <div className="flex items-center justify-between mb-3">
@@ -191,19 +232,29 @@ function JobsContent() {
                   </span>
                 </div>
 
-                <p className="text-xs text-muted mb-2">
+                <p className="text-xs text-muted mb-1">
                   {inst.name} · {inst.address_short}
                 </p>
 
+                {posting.commute_areas && posting.commute_areas.length > 0 && (
+                  <p className="text-[11px] text-muted/70 mb-2">
+                    출퇴근 {posting.commute_areas.slice(0, 2).join(', ')}
+                    {posting.commute_areas.length > 2 && ` 외 ${posting.commute_areas.length - 2}`}
+                  </p>
+                )}
+
                 <div className="flex flex-wrap gap-1">
-                  {uniquePositions.map((pos) => (
-                    <span
-                      key={pos}
-                      className="text-[11px] px-1.5 py-0.5 bg-secondary text-foreground/60 rounded"
-                    >
-                      {pos}
-                    </span>
-                  ))}
+                  {uniquePositions.map((pos) => {
+                    const colors = POSITION_COLORS[pos as PositionType];
+                    return (
+                      <span
+                        key={pos}
+                        className={`text-[11px] px-1.5 py-0.5 rounded ${colors?.bg ?? 'bg-secondary'} ${colors?.text ?? 'text-foreground/60'}`}
+                      >
+                        {pos}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             </Link>

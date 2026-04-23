@@ -19,13 +19,14 @@ function calcAge(birthDate: string): number {
 
 function formatBirth(d: string) { return d.replace(/-/g, '/'); }
 
-interface Exp { institution: string; startDate?: string; endDate?: string; isCurrent?: boolean; period?: string; role: string; age_group: string; description?: string }
+interface Exp { institution: string; startDate?: string; endDate?: string; isCurrent?: boolean; period?: string; role: string; age_group: string }
 
 export default function ResumeViewPage() {
   const params = useParams();
   const teacherId = params.id as string;
   const { user } = useAuth();
   const supabase = createClient();
+  const resumeRef = React.useRef<HTMLDivElement>(null);
 
   const [resume, setResume] = useState<Resume | null>(null);
   const [tp, setTp] = useState<TeacherProfile | null>(null);
@@ -43,9 +44,13 @@ export default function ResumeViewPage() {
     });
   }, [teacherId, supabase]);
 
-  const handlePDF = () => {
-    window.print();
+  const handleDownloadPDF = async () => {
+    if (!resumeRef.current) return;
+    const { generateResumePdf } = await import('@/lib/resumePdf');
+    await generateResumePdf(resumeRef.current, `이력서_${resume?.name || ''}.pdf`);
   };
+
+  const handlePrint = () => window.print();
 
   if (loading) return <PageSpinner />;
 
@@ -60,7 +65,7 @@ export default function ResumeViewPage() {
 
   const age = calcAge(resume.birth_date);
   const exps = (resume.experiences || []) as Exp[];
-  const certs = (resume.certificates || []) as { name: string; issuer: string }[];
+  const certs = (resume.certificates || []) as { name: string; needs_reentry?: boolean }[];
 
   return (
     <div className="max-w-[800px] mx-auto px-4 py-8">
@@ -73,14 +78,17 @@ export default function ResumeViewPage() {
               수정하기
             </Link>
           )}
-          <button onClick={handlePDF} className="px-3 py-2 text-xs font-semibold bg-[#4EA85E] text-white rounded-lg hover:bg-[#3d8b4c] flex items-center gap-1.5">
+          <button onClick={handleDownloadPDF} className="px-3 py-2 text-xs font-semibold bg-[#4EA85E] text-white rounded-lg hover:bg-[#3d8b4c] flex items-center gap-1.5">
             <Icon name="pencil" size={13} /> PDF 다운로드
+          </button>
+          <button onClick={handlePrint} className="px-3 py-2 text-xs font-semibold border border-border text-foreground rounded-lg hover:bg-[#F7FAF6] flex items-center gap-1.5">
+            <Icon name="pencil" size={13} /> 인쇄
           </button>
         </div>
       </div>
 
       {/* 이력서 본문 — PDF와 동일 구조. html2canvas 호환을 위해 인라인 색상 사용 */}
-      <div className="border border-[#ccc] shadow-sm print-resume" style={{ padding: '40px 36px', fontFamily: "'Pretendard Variable', sans-serif", background: '#ffffff', color: '#1F2B1F' }}>
+      <div ref={resumeRef} className="border border-[#ccc] shadow-sm print-resume" style={{ padding: '40px 36px', fontFamily: "'Pretendard Variable', sans-serif", background: '#ffffff', color: '#1F2B1F' }}>
 
         {/* 제목 */}
         <h2 className="text-center text-[22px] font-bold tracking-[6px] pb-3 mb-6" style={{ color: '#1F2B1F', borderBottom: '2px solid #1F2B1F' }}>이 력 서</h2>
@@ -114,14 +122,12 @@ export default function ResumeViewPage() {
               <thead>
                 <tr className="bg-[#f5f5f5]">
                   <Th>자격증명</Th>
-                  <Th>발급기관</Th>
                 </tr>
               </thead>
               <tbody>
                 {certs.map((c, i) => (
                   <tr key={i}>
                     <Td>{c.name}</Td>
-                    <Td>{c.issuer}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -147,21 +153,12 @@ export default function ResumeViewPage() {
                     ? `${exp.startDate} ~ ${exp.isCurrent ? '재직중' : exp.endDate || ''}`
                     : exp.period || '';
                   return (
-                    <React.Fragment key={i}>
-                      <tr>
-                        <Td rowSpan={exp.description ? 2 : 1}>{exp.institution}</Td>
-                        <Td>{period}</Td>
-                        <Td>{exp.role}</Td>
-                        <Td>{exp.age_group}</Td>
-                      </tr>
-                      {exp.description && (
-                        <tr>
-                          <td colSpan={3} style={{ border: '1px solid #ddd', padding: '8px 12px', fontSize: 11, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' as const }}>
-                            {exp.description}
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
+                    <tr key={i}>
+                      <Td>{exp.institution}</Td>
+                      <Td>{period}</Td>
+                      <Td>{exp.role}</Td>
+                      <Td>{exp.age_group}</Td>
+                    </tr>
                   );
                 })}
               </tbody>
