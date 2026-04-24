@@ -162,6 +162,10 @@ export default function NewJobPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
+      <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-xs text-muted hover:text-[#4EA85E] mb-3" type="button">
+        <Icon name="arrow-left" size={14} />
+        <span>뒤로</span>
+      </button>
       <h1 className="text-lg font-bold text-foreground mb-1">
         {existingPostingId ? '채용공고 수정' : '채용공고 등록'}
       </h1>
@@ -182,8 +186,8 @@ export default function NewJobPage() {
         {/* 기관 정보 (자동) */}
         {inst && (
           <section className="bg-white border border-border rounded-xl overflow-hidden">
-            <div className="flex">
-              <div className="w-[240px] min-h-[240px] self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 border-r border-border overflow-hidden">
+            <div className="flex flex-col sm:flex-row">
+              <div className="w-full h-48 sm:w-[240px] sm:h-auto sm:min-h-[240px] sm:self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 sm:border-r border-b sm:border-b-0 border-border overflow-hidden">
                 {inst.photos?.[0] ? (
                   <img src={inst.photos[0]} alt="" className="w-full h-full object-contain" />
                 ) : (
@@ -193,7 +197,7 @@ export default function NewJobPage() {
                   </div>
                 )}
               </div>
-              <div className="flex-1 p-5">
+              <div className="flex-1 p-5 min-w-0">
                 <h2 className="text-lg font-bold text-foreground mb-2">{inst.name}</h2>
                 <div className="space-y-1.5 text-xs">
                   <div className="flex">

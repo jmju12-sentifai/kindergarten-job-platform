@@ -105,13 +105,16 @@ export default function JobDetailPage() {
     <>
       <div className="max-w-[800px] mx-auto px-4 py-6">
         {/* 뒤로가기 */}
-        <Link href="/jobs" className="text-xs text-muted hover:text-[#4EA85E] mb-4 inline-block">채용공고 목록으로</Link>
+        <Link href="/jobs" className="inline-flex items-center gap-1 text-xs text-muted hover:text-[#4EA85E] mb-4">
+          <Icon name="arrow-left" size={14} />
+          <span>채용공고 목록으로</span>
+        </Link>
 
         {/* 기관 정보 */}
         <section className="bg-white border border-border rounded-xl overflow-hidden mb-4">
-          <div className="flex">
+          <div className="flex flex-col sm:flex-row">
             {/* 사진 */}
-            <Link href={`/institutions/${posting.institution_id}`} className="w-[240px] min-h-[240px] self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 border-r border-border overflow-hidden">
+            <Link href={`/institutions/${posting.institution_id}`} className="w-full h-48 sm:w-[240px] sm:h-auto sm:min-h-[240px] sm:self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 sm:border-r border-b sm:border-b-0 border-border overflow-hidden">
               {inst.photos?.[0] ? (
                 <img src={inst.photos[0]} alt="" className="w-full h-full object-contain" />
               ) : (
@@ -122,7 +125,7 @@ export default function JobDetailPage() {
               )}
             </Link>
             {/* 정보 */}
-            <div className="flex-1 p-5">
+            <div className="flex-1 p-5 min-w-0">
               <div className="flex items-start justify-between mb-3">
                 <Link href={`/institutions/${posting.institution_id}`} className="text-lg font-bold text-foreground hover:text-[#4EA85E]">
                   {inst.name}
@@ -256,7 +259,7 @@ export default function JobDetailPage() {
       {applyingFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/30" onClick={() => setApplyingFor(null)} />
-          <div className="relative bg-white rounded-xl border border-border w-full max-w-lg p-5">
+          <div className="relative bg-white rounded-xl border border-border w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto">
             <h2 className="text-base font-bold text-foreground mb-0.5">지원하기</h2>
             <p className="text-[11px] text-muted">{inst.name} - {applyingFor.position}</p>
 

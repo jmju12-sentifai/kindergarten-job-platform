@@ -100,6 +100,10 @@ export default function NotificationsPage() {
 
   return (
     <div className="max-w-[800px] mx-auto px-4 py-6">
+      <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-xs text-muted hover:text-[#4EA85E] mb-3" type="button">
+        <Icon name="arrow-left" size={14} />
+        <span>뒤로</span>
+      </button>
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-lg font-bold text-foreground">알림</h1>
         {unreadCount > 0 && (

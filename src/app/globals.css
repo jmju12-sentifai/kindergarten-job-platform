@@ -92,12 +92,17 @@ textarea.input-field {
   header, footer, nav, .no-print { display: none !important; }
   body { background: white !important; min-height: auto !important; }
   main { padding: 0 !important; }
+  .resume-scale-wrapper {
+    height: auto !important;
+    overflow: visible !important;
+  }
   .print-resume {
     border: none !important;
     box-shadow: none !important;
     margin: 0 !important;
     max-width: 100% !important;
     position: relative;
+    transform: none !important;
   }
   .print-resume::before {
     content: '';

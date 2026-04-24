@@ -167,21 +167,27 @@ export default function ResumeEdit() {
   return (
     <div className="max-w-[800px] mx-auto px-4 py-8">
       {/* 상단 타이틀 */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{existingId ? '이력서 수정' : '이력서 작성'}</h1>
-          <p className="text-xs text-muted mt-0.5">회원가입 정보가 자동으로 입력됩니다</p>
-        </div>
-        {existingId && (
-          <div className="flex items-center gap-2 no-print">
-            <button onClick={handleDownloadPDF} className="flex items-center gap-1 px-3 py-2 text-xs font-semibold border border-[#4EA85E] text-[#4EA85E] rounded-lg hover:bg-[#EAF5EC]">
-              <Icon name="pencil" size={14} /> PDF 다운로드
-            </button>
-            <button onClick={handlePrint} className="flex items-center gap-1 px-3 py-2 text-xs font-semibold border border-border text-foreground rounded-lg hover:bg-[#F7FAF6]">
-              <Icon name="pencil" size={14} /> 인쇄
-            </button>
+      <div className="mb-6 no-print">
+        <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-xs text-muted hover:text-[#4EA85E] mb-3" type="button">
+          <Icon name="arrow-left" size={14} />
+          <span>뒤로</span>
+        </button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 className="text-xl font-bold text-foreground">{existingId ? '이력서 수정' : '이력서 작성'}</h1>
+            <p className="text-xs text-muted mt-0.5">회원가입 정보가 자동으로 입력됩니다</p>
           </div>
-        )}
+          {existingId && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={handleDownloadPDF} className="flex items-center gap-1 px-3 py-2 text-xs font-semibold border border-[#4EA85E] text-[#4EA85E] rounded-lg hover:bg-[#EAF5EC]">
+                <Icon name="pencil" size={14} /> PDF 다운로드
+              </button>
+              <button onClick={handlePrint} className="flex items-center gap-1 px-3 py-2 text-xs font-semibold border border-border text-foreground rounded-lg hover:bg-[#F7FAF6]">
+                <Icon name="pencil" size={14} /> 인쇄
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 이력서 본문 */}
@@ -192,9 +198,9 @@ export default function ResumeEdit() {
           <h2 className="text-sm font-bold text-[#4EA85E] mb-4 flex items-center gap-1.5">
             <Icon name="user" size={16} /> 인적사항
           </h2>
-          <div className="flex gap-6">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
             {/* 증명사진 */}
-            <div className="flex-shrink-0 w-[130px]">
+            <div className="flex-shrink-0 w-[130px] mx-auto sm:mx-0">
               <div className="w-[130px] h-[160px] rounded-lg border border-border bg-[#F7FAF6] overflow-hidden mb-2 flex items-center justify-center">
                 {photoUrl ? (
                   <img src={photoUrl} alt="증명사진" className="w-full h-full object-cover" />
@@ -216,7 +222,7 @@ export default function ResumeEdit() {
             </div>
 
             {/* 기본정보 */}
-            <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-3 content-start">
+            <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 content-start">
               <Field label="이름">
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input-field" />
               </Field>
@@ -238,7 +244,7 @@ export default function ResumeEdit() {
                 <input type="text" value={address} readOnly className="input-field bg-gray-50 text-muted" />
               </Field>
               <Field label="졸업 대학교">
-                <div className="grid grid-cols-[1fr_1fr_80px] gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_80px] gap-2">
                   <input type="text" value={universityName} onChange={(e) => setUniversityName(e.target.value)} placeholder="대학교명" className="input-field" />
                   <input type="text" value={major} onChange={(e) => setMajor(e.target.value)} placeholder="학과" className="input-field" />
                   <select value={degreeYears} onChange={(e) => setDegreeYears(e.target.value ? Number(e.target.value) : '')} className="input-field">
@@ -321,20 +327,19 @@ export default function ResumeEdit() {
               {experiences.map((exp, i) => (
                 <div key={i} className="bg-[#F7FAF6] rounded-xl p-4 border border-[#E3EADF] relative">
                   <button type="button" onClick={() => removeExp(i)} className="absolute top-3 right-3 text-muted hover:text-danger text-xs">삭제</button>
-                  {/* 기관명 | 시작 ~ 종료 | 재직중 — 한줄 */}
-                  <div className="flex items-end gap-2 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <Field label="기관명">
-                        <input type="text" value={exp.institution} onChange={(e) => setExp(i, 'institution', e.target.value)} placeholder="햇살유치원" className="input-field" />
-                      </Field>
-                    </div>
-                    <div className="w-[120px] flex-shrink-0">
+                  <div className="mb-3">
+                    <Field label="기관명">
+                      <input type="text" value={exp.institution} onChange={(e) => setExp(i, 'institution', e.target.value)} placeholder="햇살유치원" className="input-field" />
+                    </Field>
+                  </div>
+                  <div className="flex flex-wrap items-end gap-2 mb-3">
+                    <div className="w-[calc(50%-4px)] sm:w-[120px] flex-shrink-0">
                       <Field label="시작">
                         <MonthInput value={exp.startDate} onChange={(v) => setExp(i, 'startDate', v)} />
                       </Field>
                     </div>
-                    <span className="text-muted text-xs pb-2.5">~</span>
-                    <div className="w-[120px] flex-shrink-0">
+                    <span className="hidden sm:inline text-muted text-xs pb-2.5">~</span>
+                    <div className="w-[calc(50%-4px)] sm:w-[120px] flex-shrink-0">
                       <Field label="종료">
                         {exp.isCurrent ? (
                           <div className="input-field flex items-center justify-center text-[#4EA85E] font-semibold text-xs">재직중</div>
@@ -352,7 +357,7 @@ export default function ResumeEdit() {
                       <span className="text-[11px] text-foreground whitespace-nowrap">재직중</span>
                     </label>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Field label="직무">
                       <select value={exp.role} onChange={(e) => setExp(i, 'role', e.target.value)} className="input-field">
                         {CAREER_ROLES.map((r) => <option key={r}>{r}</option>)}

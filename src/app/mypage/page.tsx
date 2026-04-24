@@ -341,15 +341,15 @@ export default function MyPage() {
                       }`}>
                         <span className="text-xs font-semibold">{app.teacher_profiles.name.charAt(0)}</span>
                       </div>
-                      <div className="flex-1 min-w-0 grid grid-cols-[1fr_1fr_1fr] gap-2 items-center">
-                        <span className="text-muted text-[12px]">
-                          지원일 · <span className="text-foreground">{new Date(app.applied_at).toLocaleDateString('ko-KR')}</span>
-                        </span>
-                        <span className="text-muted text-[12px]">
+                      <div className="flex-1 min-w-0 flex flex-col gap-0.5 sm:grid sm:grid-cols-3 sm:gap-2 sm:items-center">
+                        <span className="text-muted text-[12px] truncate">
                           이름 · <span className="text-foreground font-semibold">{app.teacher_profiles.name}</span>
                         </span>
-                        <span className="text-muted text-[12px]">
+                        <span className="text-muted text-[12px] truncate">
                           지원분야 · <span className="text-foreground">{app.position_entries.position}</span>
+                        </span>
+                        <span className="text-muted text-[12px] truncate">
+                          지원일 · <span className="text-foreground">{new Date(app.applied_at).toLocaleDateString('ko-KR')}</span>
                         </span>
                       </div>
                       <span className={`text-[11px] font-bold flex-shrink-0 px-2 py-1 rounded-full ${

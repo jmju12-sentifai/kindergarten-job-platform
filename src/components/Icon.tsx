@@ -19,7 +19,8 @@ type IconName =
   | 'bookmark'
   | 'star'
   | 'check'
-  | 'bell';
+  | 'bell'
+  | 'arrow-left';
 
 const paths: Record<IconName, React.ReactNode> = {
   search: (
@@ -81,6 +82,7 @@ const paths: Record<IconName, React.ReactNode> = {
   star: <path d="m12 3 2.7 5.7 6.3.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.3-.9L12 3Z" />,
   check: <path d="m5 12 4 4 10-10" />,
   bell: <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9ZM13.73 21a2 2 0 0 1-3.46 0" />,
+  'arrow-left': <path d="M19 12H5m0 0 6-6m-6 6 6 6" />,
 };
 
 export default function Icon({

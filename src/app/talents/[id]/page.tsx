@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,16 +21,22 @@ function formatBirth(d: string) { return d.replace(/-/g, '/'); }
 
 interface Exp { institution: string; startDate?: string; endDate?: string; isCurrent?: boolean; period?: string; role: string; age_group: string }
 
+const RESUME_WIDTH = 720;
+
 export default function ResumeViewPage() {
   const params = useParams();
+  const router = useRouter();
   const teacherId = params.id as string;
   const { user } = useAuth();
   const supabase = createClient();
   const resumeRef = React.useRef<HTMLDivElement>(null);
+  const scaleWrapperRef = React.useRef<HTMLDivElement>(null);
 
   const [resume, setResume] = useState<Resume | null>(null);
   const [tp, setTp] = useState<TeacherProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [scale, setScale] = useState(1);
+  const [innerHeight, setInnerHeight] = useState<number | null>(null);
   const isOwner = user?.id === teacherId;
 
   useEffect(() => {
@@ -44,10 +50,33 @@ export default function ResumeViewPage() {
     });
   }, [teacherId, supabase]);
 
+  useEffect(() => {
+    if (loading) return;
+    const update = () => {
+      if (!scaleWrapperRef.current || !resumeRef.current) return;
+      const wrapperWidth = scaleWrapperRef.current.clientWidth;
+      const s = Math.min(1, wrapperWidth / RESUME_WIDTH);
+      setScale(s);
+      setInnerHeight(resumeRef.current.offsetHeight);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    if (scaleWrapperRef.current) ro.observe(scaleWrapperRef.current);
+    if (resumeRef.current) ro.observe(resumeRef.current);
+    return () => ro.disconnect();
+  }, [loading]);
+
   const handleDownloadPDF = async () => {
     if (!resumeRef.current) return;
-    const { generateResumePdf } = await import('@/lib/resumePdf');
-    await generateResumePdf(resumeRef.current, `이력서_${resume?.name || ''}.pdf`);
+    const el = resumeRef.current;
+    const origTransform = el.style.transform;
+    el.style.transform = 'none';
+    try {
+      const { generateResumePdf } = await import('@/lib/resumePdf');
+      await generateResumePdf(el, `이력서_${resume?.name || ''}.pdf`);
+    } finally {
+      el.style.transform = origTransform;
+    }
   };
 
   const handlePrint = () => window.print();
@@ -70,25 +99,32 @@ export default function ResumeViewPage() {
   return (
     <div className="max-w-[800px] mx-auto px-4 py-8">
       {/* 상단 액션 — 인쇄 시 숨김 */}
-      <div className="flex items-center justify-between mb-4 no-print">
-        <h1 className="text-lg font-bold text-foreground">이력서</h1>
-        <div className="flex gap-2">
-          {isOwner && (
-            <Link href="/resume/edit" className="px-3 py-2 text-xs font-semibold border border-[#4EA85E] text-[#4EA85E] rounded-lg hover:bg-[#EAF5EC]">
-              수정하기
-            </Link>
-          )}
-          <button onClick={handleDownloadPDF} className="px-3 py-2 text-xs font-semibold bg-[#4EA85E] text-white rounded-lg hover:bg-[#3d8b4c] flex items-center gap-1.5">
-            <Icon name="pencil" size={13} /> PDF 다운로드
-          </button>
-          <button onClick={handlePrint} className="px-3 py-2 text-xs font-semibold border border-border text-foreground rounded-lg hover:bg-[#F7FAF6] flex items-center gap-1.5">
-            <Icon name="pencil" size={13} /> 인쇄
-          </button>
+      <div className="no-print mb-4">
+        <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-xs text-muted hover:text-[#4EA85E] mb-3">
+          <Icon name="arrow-left" size={14} />
+          <span>뒤로</span>
+        </button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-lg font-bold text-foreground">이력서</h1>
+          <div className="flex flex-wrap gap-2">
+            {isOwner && (
+              <Link href="/resume/edit" className="px-3 py-2 text-xs font-semibold border border-[#4EA85E] text-[#4EA85E] rounded-lg hover:bg-[#EAF5EC]">
+                수정하기
+              </Link>
+            )}
+            <button onClick={handleDownloadPDF} className="px-3 py-2 text-xs font-semibold bg-[#4EA85E] text-white rounded-lg hover:bg-[#3d8b4c] flex items-center gap-1.5">
+              <Icon name="pencil" size={13} /> PDF 다운로드
+            </button>
+            <button onClick={handlePrint} className="px-3 py-2 text-xs font-semibold border border-border text-foreground rounded-lg hover:bg-[#F7FAF6] flex items-center gap-1.5">
+              <Icon name="pencil" size={13} /> 인쇄
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 이력서 본문 — PDF와 동일 구조. html2canvas 호환을 위해 인라인 색상 사용 */}
-      <div ref={resumeRef} className="border border-[#ccc] shadow-sm print-resume" style={{ padding: '40px 36px', fontFamily: "'Pretendard Variable', sans-serif", background: '#ffffff', color: '#1F2B1F' }}>
+      {/* 이력서 본문 — PDF와 동일 구조. 모바일에선 뷰포트에 맞춰 축소 */}
+      <div ref={scaleWrapperRef} className="resume-scale-wrapper" style={{ height: innerHeight !== null && scale < 1 ? innerHeight * scale : undefined, overflow: scale < 1 ? 'hidden' : undefined }}>
+      <div ref={resumeRef} className="border border-[#ccc] shadow-sm print-resume" style={{ width: RESUME_WIDTH, padding: '40px 36px', fontFamily: "'Pretendard Variable', sans-serif", background: '#ffffff', color: '#1F2B1F', transform: scale < 1 ? `scale(${scale})` : undefined, transformOrigin: 'top left' }}>
 
         {/* 제목 */}
         <h2 className="text-center text-[22px] font-bold tracking-[6px] pb-3 mb-6" style={{ color: '#1F2B1F', borderBottom: '2px solid #1F2B1F' }}>이 력 서</h2>
@@ -184,6 +220,7 @@ export default function ResumeViewPage() {
         <p className="mt-8 text-right text-[12px]" style={{ color: '#999' }}>
           {new Date().getFullYear()}년 {String(new Date().getMonth() + 1).padStart(2, '0')}월 {String(new Date().getDate()).padStart(2, '0')}일 작성
         </p>
+      </div>
       </div>
     </div>
   );

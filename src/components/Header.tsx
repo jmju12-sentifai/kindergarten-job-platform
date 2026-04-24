@@ -136,23 +136,53 @@ export default function Header() {
       {menuOpen && (
         <div className="md:hidden border-t border-border bg-white px-4 pb-4">
           <nav className="flex flex-col pt-2">
+            {!isHome && (
+              <form onSubmit={(e) => { handleSearch(e); setMenuOpen(false); }} className="pb-3">
+                <div className="relative w-full">
+                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="유치원명, 지역, 키워드 검색" className="w-full h-10 pl-3.5 pr-16 bg-background border border-border rounded-md text-sm focus:outline-none focus:border-primary transition-colors" />
+                  <button type="submit" className="absolute right-0 top-0 h-10 px-4 text-xs font-semibold text-white bg-primary-dark rounded-r-md">검색</button>
+                </div>
+              </form>
+            )}
             {navItems.map((item) => (
               <Link key={item.href} href={item.href} className="text-sm font-medium py-2.5 border-b border-border/40 text-foreground/80" onClick={() => setMenuOpen(false)}>{item.label}</Link>
             ))}
-            <div className="flex gap-2 pt-3">
+            {user && (
+              <>
+                <Link href="/mypage" className="flex items-center justify-between text-sm font-medium py-2.5 border-b border-border/40 text-foreground/80" onClick={() => setMenuOpen(false)}>
+                  <span>마이페이지</span>
+                </Link>
+                <Link href="/notifications" className="flex items-center justify-between text-sm font-medium py-2.5 border-b border-border/40 text-foreground/80" onClick={() => setMenuOpen(false)}>
+                  <span className="flex items-center gap-2"><Icon name="bell" size={16} /> 알림</span>
+                </Link>
+              </>
+            )}
+            <div className="flex flex-col gap-2 pt-3">
+              {profile?.user_type === 'institution' && (
+                <Link href="/jobs/new" className="text-center py-2.5 text-xs font-semibold text-primary-dark border border-primary-dark rounded" onClick={() => setMenuOpen(false)}>
+                  {hasPosting ? '공고 수정' : '공고 등록'}
+                </Link>
+              )}
+              {profile?.user_type === 'teacher' && (
+                hasResume ? (
+                  <Link href={`/talents/${user?.id}`} className="text-center py-2.5 text-xs font-semibold text-white bg-primary-dark rounded" onClick={() => setMenuOpen(false)}>이력서 조회</Link>
+                ) : (
+                  <Link href="/resume/edit" className="text-center py-2.5 text-xs font-semibold text-white bg-primary-dark rounded" onClick={() => setMenuOpen(false)}>이력서 등록</Link>
+                )
+              )}
               {user ? (
                 <button
                   onClick={() => { setMenuOpen(false); handleSignOut(); }}
                   disabled={signingOut}
-                  className="flex-1 text-center py-2 text-xs font-semibold text-primary-dark border border-primary-dark rounded disabled:opacity-50"
+                  className="w-full text-center py-2 text-xs font-semibold text-muted border border-border rounded disabled:opacity-50"
                 >
                   {signingOut ? '로그아웃 중...' : '로그아웃'}
                 </button>
               ) : (
-                <>
-                  <Link href="/signup" className="flex-1 text-center py-2 text-xs font-semibold text-primary-dark border border-primary-dark rounded" onClick={() => setMenuOpen(false)}>회원가입</Link>
-                  <Link href="/login" className="flex-1 text-center py-2 text-xs font-semibold text-white bg-primary-dark rounded" onClick={() => setMenuOpen(false)}>로그인</Link>
-                </>
+                <div className="flex gap-2">
+                  <Link href="/signup" className="flex-1 text-center py-2.5 text-xs font-semibold text-primary-dark border border-primary-dark rounded" onClick={() => setMenuOpen(false)}>회원가입</Link>
+                  <Link href="/login" className="flex-1 text-center py-2.5 text-xs font-semibold text-white bg-primary-dark rounded" onClick={() => setMenuOpen(false)}>로그인</Link>
+                </div>
               )}
             </div>
           </nav>

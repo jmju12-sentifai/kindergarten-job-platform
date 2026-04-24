@@ -140,8 +140,8 @@ export default function EditProfile() {
   return (
     <div className="max-w-[520px] mx-auto px-4 py-8">
       <div className="flex items-center gap-2 mb-6">
-        <button onClick={() => router.back()} className="text-muted hover:text-foreground">
-          <Icon name="leaf" size={18} />
+        <button onClick={() => router.back()} className="text-muted hover:text-foreground p-1 -ml-1" aria-label="뒤로">
+          <Icon name="arrow-left" size={20} />
         </button>
         <h1 className="text-xl font-bold text-foreground">내 정보 수정</h1>
       </div>

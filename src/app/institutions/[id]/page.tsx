@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import Icon from '@/components/Icon';
@@ -13,6 +13,7 @@ function getDaysLeft(deadline: string) {
 
 export default function InstitutionDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const institutionId = params.id as string;
 
   const [institution, setInstitution] = useState<InstitutionProfile | null>(null);
@@ -61,13 +62,18 @@ export default function InstitutionDetailPage() {
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-6">
+      {/* 뒤로가기 */}
+      <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-xs text-muted hover:text-primary-dark mb-3" type="button">
+        <Icon name="arrow-left" size={14} />
+        <span>뒤로</span>
+      </button>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-xs text-muted mb-5">
+      <div className="flex items-center gap-1.5 text-xs text-muted mb-5 flex-wrap">
         <Link href="/jobs" className="hover:text-primary-dark">
           채용공고
         </Link>
         <span>/</span>
-        <span className="text-foreground/80 truncate">{institution.name}</span>
+        <span className="text-foreground/80 truncate max-w-full">{institution.name}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -99,7 +105,7 @@ export default function InstitutionDetailPage() {
           {/* Institution Details */}
           <div className="bg-white border border-border rounded-lg p-5">
             <h2 className="text-sm font-bold text-foreground mb-3">유치원 정보</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4 text-xs">
               <div>
                 <span className="text-muted">설립유형</span>
                 <p className="text-foreground font-medium">{institution.type}</p>
