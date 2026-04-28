@@ -19,6 +19,8 @@ function InstitutionSignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isKakao = searchParams.get('kakao') === '1';
+  const errorParam = searchParams.get('error');
+  const isAlreadyRegistered = errorParam === 'already_registered';
   const { toast } = useToast();
   const { user, refreshProfile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -31,6 +33,12 @@ function InstitutionSignupContent() {
       router.replace('/login');
     }
   }, [isKakao, authLoading, user, router, toast]);
+
+  useEffect(() => {
+    if (isAlreadyRegistered) {
+      toast('이미 가입된 카카오 계정입니다. 로그인해주세요.', 'error');
+    }
+  }, [isAlreadyRegistered, toast]);
   const photoRef = useRef<PhotoUploadHandle>(null);
   const { emailStatus, passwordValid, passwordMatch, checkEmail, checkPassword, checkPasswordMatch } = useFieldValidation();
   const [form, setForm] = useState({
@@ -154,6 +162,12 @@ function InstitutionSignupContent() {
           </div>
           <h1 className="text-xl font-bold text-foreground">기관 계정 만들기</h1>
         </div>
+
+        {isAlreadyRegistered && (
+          <div className="bg-[#FDECEC] border border-[#F5BEBE] rounded-xl p-3 mb-4 text-xs text-[#B2342A]">
+            이미 가입된 카카오 계정입니다. <Link href="/login" className="font-semibold underline">로그인 페이지로 이동</Link>
+          </div>
+        )}
 
         {!isKakao && (
           <>

@@ -116,18 +116,28 @@ export async function GET(request: NextRequest) {
   const isValidRole = role === 'teacher' || role === 'institution';
 
   if (isValidRole) {
-    if (profile && profile.user_type !== role) {
+    // 회원가입 진입: 이미 어떤 유형으로든 가입을 마친 사용자(서브 프로필 존재)면 차단.
+    const [{ data: teacherSub }, { data: instSub }] = await Promise.all([
+      supabase.from('teacher_profiles').select('id').eq('id', user.id).maybeSingle(),
+      supabase.from('institution_profiles').select('id').eq('id', user.id).maybeSingle(),
+    ]);
+
+    if (teacherSub || instSub) {
+      log('already_registered_block', { teacher: !!teacherSub, institution: !!instSub });
+      await supabase.auth.signOut();
+      return NextResponse.redirect(`${origin}/signup/${role}?error=already_registered`);
+    }
+
+    // 신규 또는 미완료 가입: 선택한 role로 user_type 정렬 후 가입 폼 진입.
+    if (!profile || profile.user_type !== role) {
       const { error: updErr } = await supabase
         .from('profiles')
         .update({ user_type: role })
         .eq('id', user.id);
       if (updErr) log('user_type_update_failed', { message: updErr.message });
     }
-    const table = role === 'teacher' ? 'teacher_profiles' : 'institution_profiles';
-    const { data: sub } = await supabase.from(table).select('id').eq('id', user.id).maybeSingle();
-    const target = sub ? '/' : `/signup/${role}?kakao=1`;
-    log('redirect_role_branch', { target });
-    return NextResponse.redirect(`${origin}${target}`);
+    log('redirect_role_branch', { target: `/signup/${role}?kakao=1` });
+    return NextResponse.redirect(`${origin}/signup/${role}?kakao=1`);
   }
 
   const currentType = (profile?.user_type ?? 'teacher') as Role;
