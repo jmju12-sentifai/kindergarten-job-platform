@@ -141,9 +141,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: string, session: Session | null) => {
+        console.log('[AuthContext] onAuthStateChange', { event, hasUser: !!session?.user });
         if (event === 'SIGNED_IN' && session?.user) {
           setState((prev) => ({ ...prev, user: session.user, session, loading: false, profileLoaded: false }));
           const profiles = await fetchProfile(session.user.id);
+          console.log('[AuthContext] SIGNED_IN profile', { hasProfile: !!profiles.profile, userType: profiles.profile?.user_type });
           setState((prev) => ({ ...prev, ...profiles, profileLoaded: true }));
         } else if (event === 'SIGNED_OUT') {
           setState({

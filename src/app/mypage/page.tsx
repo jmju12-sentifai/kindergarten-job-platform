@@ -70,11 +70,19 @@ export default function MyPage() {
   };
 
   useEffect(() => {
+    console.log('[mypage] gate', {
+      authLoading,
+      hasUser: !!user,
+      profileLoaded,
+      hasProfile: !!profile,
+      userType: profile?.user_type,
+    });
     // proxy가 미인증 시 /login으로 보내므로 여기서는 클라 redirect를 하지 않는다.
     // hydration 중일 수 있어 user가 잠시 null인 순간이 있을 수 있다 → 그냥 대기.
     if (authLoading || !user) return;
     if (!profileLoaded) return;
     if (!profile) {
+      console.log('[mypage] profile null after load → /signup');
       router.replace('/signup');
       return;
     }
