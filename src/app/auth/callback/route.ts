@@ -118,10 +118,36 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/signup/${role}?kakao=1`);
   }
 
-  const currentType = (profile?.user_type ?? 'teacher') as Role;
-  const table = currentType === 'teacher' ? 'teacher_profiles' : 'institution_profiles';
-  const { data: sub } = await supabase.from(table).select('id').eq('id', user.id).maybeSingle();
-  const target = sub ? '/' : '/signup?kakao=1';
-  log('redirect_login_branch', { target, currentType });
+  // 로그인 진입(role 미지정): 양쪽 sub-profile을 모두 확인.
+  // profile.user_type을 신뢰하지 않는 이유: 과거 데이터 상태에 따라 user_type이
+  // sub-profile과 어긋날 수 있고, 한쪽만 보면 잘못 /signup으로 보낼 수 있다.
+  const [{ data: teacherSubLogin }, { data: instSubLogin }] = await Promise.all([
+    supabase.from('teacher_profiles').select('id').eq('id', user.id).maybeSingle(),
+    supabase.from('institution_profiles').select('id').eq('id', user.id).maybeSingle(),
+  ]);
+  const hasAnySub = !!(teacherSubLogin || instSubLogin);
+
+  // user_type이 실제 sub와 어긋나면 보정 (mypage 분기 정확도 보장).
+  const correctType: Role | null = teacherSubLogin
+    ? 'teacher'
+    : instSubLogin
+      ? 'institution'
+      : null;
+  if (correctType && profile?.user_type !== correctType) {
+    const { error: fixErr } = await supabase
+      .from('profiles')
+      .update({ user_type: correctType })
+      .eq('id', user.id);
+    if (fixErr) log('user_type_realign_failed', { message: fixErr.message });
+    else log('user_type_realigned', { to: correctType });
+  }
+
+  const target = hasAnySub ? '/' : '/signup?kakao=1';
+  log('redirect_login_branch', {
+    target,
+    profileUserType: profile?.user_type,
+    teacherSub: !!teacherSubLogin,
+    instSub: !!instSubLogin,
+  });
   return NextResponse.redirect(`${origin}${target}`);
 }
