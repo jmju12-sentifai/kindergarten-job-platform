@@ -70,12 +70,9 @@ export default function MyPage() {
   };
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
-    // 프로필 조회가 끝나기 전까지는 대기. 끝났는데 profile이 없으면 가입 흐름으로 보냄
+    // proxy가 미인증 시 /login으로 보내므로 여기서는 클라 redirect를 하지 않는다.
+    // hydration 중일 수 있어 user가 잠시 null인 순간이 있을 수 있다 → 그냥 대기.
+    if (authLoading || !user) return;
     if (!profileLoaded) return;
     if (!profile) {
       router.replace('/signup');

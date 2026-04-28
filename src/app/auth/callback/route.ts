@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
+import { createServerSupabase } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 type Role = 'teacher' | 'institution';
@@ -26,27 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=no_code`);
   }
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // noop
-          }
-        },
-      },
-    }
-  );
+  const supabase = await createServerSupabase();
 
   const { data: exchange, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError || !exchange.user) {
@@ -57,7 +36,6 @@ export async function GET(request: NextRequest) {
   const user = exchange.user;
   const userEmail = user.email;
   log('exchange_ok', { userId: user.id, email: userEmail });
-  log('cookie_names_after_exchange', cookieStore.getAll().map((c) => c.name));
 
   if (!userEmail) {
     try {

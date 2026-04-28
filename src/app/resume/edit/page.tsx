@@ -46,8 +46,9 @@ export default function ResumeEdit() {
   const supabase = createClient();
 
   useEffect(() => {
-    if (!authLoading && (!user || profile?.user_type !== 'teacher')) {
-      router.push('/login');
+    // 미인증은 proxy가 처리. 여기서는 user_type 미스매치(잘못된 진입)만 차단.
+    if (!authLoading && user && profile && profile.user_type !== 'teacher') {
+      router.replace('/');
     }
   }, [authLoading, user, profile, router]);
 

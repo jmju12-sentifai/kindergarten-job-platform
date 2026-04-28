@@ -57,7 +57,12 @@ function LoginContent() {
 
     setLoading(false);
     toast('로그인되었습니다');
-    router.push('/mypage');
+    // SIGNED_IN 이벤트 핸들러의 setState가 flush되도록 한 틱 양보 후 이동.
+    // proxy가 서버 사이드에서 세션을 검증하지만, 클라 AuthContext도 동기화된 상태로
+    // 마이페이지에 진입해야 깜빡임이 없다.
+    await new Promise((r) => setTimeout(r, 0));
+    const next = searchParams.get('next');
+    router.push(next && next.startsWith('/') ? next : '/mypage');
     router.refresh();
   };
 

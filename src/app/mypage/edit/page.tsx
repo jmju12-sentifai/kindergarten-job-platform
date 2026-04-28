@@ -32,8 +32,8 @@ export default function EditProfile() {
   });
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) { router.push('/login'); return; }
+    // proxy가 미인증 redirect 책임. 여기서는 hydration만 대기.
+    if (authLoading || !user) return;
 
     if (teacherProfile) {
       setTForm({

@@ -44,11 +44,8 @@ export default function NotificationsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
+    // 미인증은 proxy가 처리.
+    if (authLoading || !user) return;
 
     async function fetchNotifications() {
       const { data } = await supabase

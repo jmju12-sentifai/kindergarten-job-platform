@@ -91,13 +91,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // 최대 3초 안에 반드시 loading 해제 (세션 조회가 멈춰도 UI는 풀림)
+    // 안전망: getSession이 비정상적으로 hang하면 8초 후 loading 해제.
+    // 정상 케이스에서는 절대 트리거되지 않음 (proxy가 쿠키를 미리 갱신해두므로
+    // 클라 getSession은 거의 즉시 응답한다).
     const timeout = setTimeout(() => {
       setState((prev) => {
         if (prev.loading) return { ...prev, loading: false, profileLoaded: true };
         return prev;
       });
-    }, 3000);
+    }, 8000);
 
     supabase.auth.getSession().then(async ({ data }: { data: { session: Session | null } }) => {
       const session = data.session;
