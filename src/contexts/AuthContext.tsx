@@ -43,9 +43,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfile = useCallback(async (userId: string) => {
     const empty = { profile: null, teacherProfile: null, institutionProfile: null, hasResume: false, hasPosting: false };
 
-    // profiles 행은 auth 트리거(handle_new_user)로 자동 생성된다.
-    // 다만 로그인 직후에는 세션 동기화 race로 첫 쿼리가 빈 결과로 떨어질 수 있어
-    // null/error면 짧게 재시도한다.
+    // profiles 행은 auth 트리거(handle_new_user)로 자동 생성되어야 하지만,
+    // 트리거 누락/실패 케이스가 관측됐다 (콘솔 406 = no row).
+    // 1) 짧은 재시도로 일시적 동기화 race 흡수
+    // 2) 그래도 없으면 방어적 upsert로 자가 복구 (callback이 안 도는 이메일 로그인 경로 대비)
     async function fetchProfileRow() {
       for (let attempt = 1; attempt <= 3; attempt++) {
         const { data, error } = await supabase
@@ -57,7 +58,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[AuthContext] fetchProfile attempt', attempt, { hasData: !!data, error: error?.message });
         if (attempt < 3) await new Promise((r) => setTimeout(r, 250 * attempt));
       }
-      return null;
+
+      // Fallback: profile 행이 정말 없음 → 현재 인증된 사용자 기준으로 자가 생성.
+      console.log('[AuthContext] fetchProfile fallback: self-heal upsert');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data: inserted, error: insertErr } = await supabase
+        .from('profiles')
+        .upsert(
+          { id: user.id, email: user.email ?? '', user_type: 'teacher' },
+          { onConflict: 'id' }
+        )
+        .select('*')
+        .maybeSingle();
+      if (insertErr) console.log('[AuthContext] fetchProfile upsert failed', insertErr.message);
+      return inserted ?? null;
     }
 
     const run = async () => {

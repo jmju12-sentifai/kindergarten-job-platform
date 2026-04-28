@@ -83,6 +83,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=email_exists`);
   }
 
+  // 방어적 보정: handle_new_user 트리거가 누락/실패한 계정 대비.
+  // ignoreDuplicates=true → 이미 있으면 no-op, 없으면 user_type='teacher' 기본으로 INSERT.
+  // (실제 user_type은 아래 role 분기 또는 sub-profile 기준 보정 단계에서 맞춰진다)
+  const { error: upsertErr } = await supabase
+    .from('profiles')
+    .upsert(
+      { id: user.id, email: userEmail, user_type: role ?? 'teacher' },
+      { onConflict: 'id', ignoreDuplicates: true }
+    );
+  if (upsertErr) log('profile_upsert_failed', { message: upsertErr.message });
+
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('user_type')
