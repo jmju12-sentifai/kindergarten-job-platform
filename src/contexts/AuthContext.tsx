@@ -42,14 +42,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     const empty = { profile: null, teacherProfile: null, institutionProfile: null, hasResume: false, hasPosting: false };
-    const run = async () => {
-      try {
-        const { data: profile } = await supabase
+
+    // profiles 행은 auth 트리거(handle_new_user)로 자동 생성된다.
+    // 다만 로그인 직후에는 세션 동기화 race로 첫 쿼리가 빈 결과로 떨어질 수 있어
+    // null/error면 짧게 재시도한다.
+    async function fetchProfileRow() {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
+        if (data) return data;
+        console.log('[AuthContext] fetchProfile attempt', attempt, { hasData: !!data, error: error?.message });
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 250 * attempt));
+      }
+      return null;
+    }
 
+    const run = async () => {
+      try {
+        const profile = await fetchProfileRow();
         if (!profile) return empty;
 
         let teacherProfile: TeacherProfile | null = null;
@@ -58,25 +71,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let hasPosting = false;
 
         if (profile.user_type === 'teacher') {
-          const { data } = await supabase.from('teacher_profiles').select('*').eq('id', userId).single();
+          const { data } = await supabase.from('teacher_profiles').select('*').eq('id', userId).maybeSingle();
           teacherProfile = data;
           const { count } = await supabase.from('resumes').select('id', { count: 'exact', head: true }).eq('teacher_id', userId);
           hasResume = (count ?? 0) > 0;
         } else if (profile.user_type === 'institution') {
-          const { data } = await supabase.from('institution_profiles').select('*').eq('id', userId).single();
+          const { data } = await supabase.from('institution_profiles').select('*').eq('id', userId).maybeSingle();
           institutionProfile = data;
           const { count } = await supabase.from('postings').select('id', { count: 'exact', head: true }).eq('institution_id', userId);
           hasPosting = (count ?? 0) > 0;
         }
 
         return { profile, teacherProfile, institutionProfile, hasResume, hasPosting };
-      } catch {
+      } catch (e) {
+        console.log('[AuthContext] fetchProfile error', (e as Error)?.message);
         return empty;
       }
     };
 
-    // 5초 안에 응답 없으면 empty로 fallback — 무한 대기 차단
-    const timeout = new Promise<typeof empty>((resolve) => setTimeout(() => resolve(empty), 5000));
+    // 안전망: 8초 안에 응답 없으면 empty로 fallback (재시도 합쳐서 충분히 기다림).
+    const timeout = new Promise<typeof empty>((resolve) => setTimeout(() => resolve(empty), 8000));
     return Promise.race([run(), timeout]);
   }, [supabase]);
 

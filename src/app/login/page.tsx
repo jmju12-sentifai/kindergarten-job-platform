@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { ButtonSpinner, PageSpinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   email_exists: '이미 이메일로 가입된 계정이 있습니다. 기존 방식으로 로그인해주세요.',
@@ -19,6 +20,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { refreshProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -55,12 +57,12 @@ function LoginContent() {
       return;
     }
 
+    // AuthContext의 user/profile이 navigate 전에 채워지도록 명시적으로 대기.
+    // SIGNED_IN 이벤트만 믿으면 React 렌더 큐와 router.push가 race가 난다.
+    await refreshProfile();
+
     setLoading(false);
     toast('로그인되었습니다');
-    // SIGNED_IN 이벤트 핸들러의 setState가 flush되도록 한 틱 양보 후 이동.
-    // proxy가 서버 사이드에서 세션을 검증하지만, 클라 AuthContext도 동기화된 상태로
-    // 마이페이지에 진입해야 깜빡임이 없다.
-    await new Promise((r) => setTimeout(r, 0));
     const next = searchParams.get('next');
     router.push(next && next.startsWith('/') ? next : '/mypage');
     router.refresh();
