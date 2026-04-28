@@ -39,6 +39,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const supabase = createClient();
   const initializedRef = useRef(false);
+  // onAuthStateChange 핸들러가 최신 state를 참조하기 위한 ref (closure capture 회피).
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const fetchProfile = useCallback(async (userId: string) => {
     const empty = { profile: null, teacherProfile: null, institutionProfile: null, hasResume: false, hasPosting: false };
@@ -158,6 +161,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event: string, session: Session | null) => {
         console.log('[AuthContext] onAuthStateChange', { event, hasUser: !!session?.user });
         if (event === 'SIGNED_IN' && session?.user) {
+          // 카카오 콜백 후 페이지 하드 리로드되면 getSession 경로가 먼저 fetchProfile을
+          // 끝낸 상태인데, 곧이어 SIGNED_IN까지 발화해 동일 사용자에 대해
+          // 또 fetchProfile을 돌리며 profileLoaded를 false로 잠깐 리셋한다.
+          // 그 순간 mypage가 profile=null로 오인하고 /signup으로 보내는 race가 발생.
+          // 같은 사용자 + profile 이미 로드된 상태면 재요청을 건너뛴다.
+          const current = stateRef.current;
+          if (current.user?.id === session.user.id && current.profileLoaded && current.profile) {
+            console.log('[AuthContext] SIGNED_IN skip refetch (same user, profile loaded)');
+            setState((prev) => ({ ...prev, session, loading: false }));
+            return;
+          }
           setState((prev) => ({ ...prev, user: session.user, session, loading: false, profileLoaded: false }));
           const profiles = await fetchProfile(session.user.id);
           console.log('[AuthContext] SIGNED_IN profile', { hasProfile: !!profiles.profile, userType: profiles.profile?.user_type });

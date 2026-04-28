@@ -82,9 +82,15 @@ export default function MyPage() {
     if (authLoading || !user) return;
     if (!profileLoaded) return;
     if (!profile) {
-      console.log('[mypage] profile null after load → /signup');
-      router.replace('/signup');
-      return;
+      // 카카오 콜백 후 AuthContext가 SIGNED_IN으로 잠깐 profileLoaded를 토글하는
+      // 사이 즉시 redirect되는 race 방지: 1.5초 기다렸다가 그래도 null이면 redirect.
+      // 그 사이 state가 업데이트되면 effect가 재실행되며 timer는 cleanup으로 취소됨.
+      console.log('[mypage] profile null — defer redirect 1500ms');
+      const t = setTimeout(() => {
+        console.log('[mypage] profile still null → /signup');
+        router.replace('/signup');
+      }, 1500);
+      return () => clearTimeout(t);
     }
 
     async function fetchTeacherData() {
