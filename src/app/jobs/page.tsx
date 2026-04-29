@@ -38,6 +38,7 @@ function JobsContent() {
       const { data } = await supabase
         .from('postings')
         .select('*, position_entries(*), institution_profiles!inner(*)')
+        .is('archived_at', null)
         .gte('deadline', oneMonthAgo.toISOString().split('T')[0])
         .order('created_at', { ascending: false });
       setPostings((data as PostingWithPositions[] | null) ?? []);
@@ -238,8 +239,8 @@ function JobsContent() {
 
                 {posting.commute_areas && posting.commute_areas.length > 0 && (
                   <p className="text-[11px] text-muted/70 mb-2">
-                    출퇴근 {posting.commute_areas.slice(0, 2).join(', ')}
-                    {posting.commute_areas.length > 2 && ` 외 ${posting.commute_areas.length - 2}`}
+                    출퇴근 가능지역 {posting.commute_areas.slice(0, 3).join(', ')}
+                    {posting.commute_areas.length > 3 && ` 외 ${posting.commute_areas.length - 3}`}
                   </p>
                 )}
 

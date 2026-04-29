@@ -27,7 +27,6 @@ export default function JobDetailPage() {
   const [resume, setResume] = useState<Resume | null>(null);
   const [appliedPositions, setAppliedPositions] = useState<string[]>([]);
   const [applyingFor, setApplyingFor] = useState<PositionEntry | null>(null);
-  const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -35,6 +34,7 @@ export default function JobDetailPage() {
     supabase.from('postings')
       .select('*, position_entries(*), institution_profiles!inner(*)')
       .eq('id', postingId)
+      .is('archived_at', null)
       .single()
       .then(({ data }: { data: typeof posting }) => { setPosting(data); setLoading(false); });
   }, [postingId]);
@@ -52,7 +52,6 @@ export default function JobDetailPage() {
     if (!user) { router.push('/login'); return; }
     if (!resume) return;
     setApplyingFor(pe);
-    setMessage('');
   };
 
   const handleSubmitApplication = async () => {
@@ -65,7 +64,6 @@ export default function JobDetailPage() {
       position_entry_id: applyingFor.id,
       teacher_id: user.id,
       resume_id: resume.id,
-      message,
       answers: [],
       status: '검토중',
     });
@@ -232,13 +230,14 @@ export default function JobDetailPage() {
               <div className="flex flex-wrap gap-2">
                 {positions.map((pe) => {
                   const alreadyApplied = appliedPositions.includes(pe.id);
+                  const colors = POSITION_COLORS[pe.position as PositionType];
                   return alreadyApplied ? (
-                    <span key={pe.id} className="px-4 py-2 text-xs font-semibold bg-[#EAF5EC] text-[#4EA85E] rounded-lg">
+                    <span key={pe.id} className={`px-5 py-3 text-sm font-bold rounded-lg ${colors?.bg ?? 'bg-[#EAF5EC]'} ${colors?.text ?? 'text-[#4EA85E]'} opacity-70`}>
                       {pe.position} 지원완료
                     </span>
                   ) : (
                     <button key={pe.id} onClick={() => handleApply(pe)}
-                      className="px-4 py-2 text-xs font-semibold bg-[#66c477] text-white rounded-lg hover:bg-[#4EA85E]">
+                      className={`px-5 py-3 text-sm font-bold rounded-lg border-2 border-transparent transition-all hover:shadow-md hover:-translate-y-0.5 ${colors?.bg ?? 'bg-[#EAF5EC]'} ${colors?.text ?? 'text-[#4EA85E]'}`}>
                       {pe.position} 지원
                     </button>
                   );
@@ -259,27 +258,22 @@ export default function JobDetailPage() {
       {applyingFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/30" onClick={() => setApplyingFor(null)} />
-          <div className="relative bg-white rounded-xl border border-border w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-base font-bold text-foreground mb-0.5">지원하기</h2>
-            <p className="text-[11px] text-muted">{inst.name} - {applyingFor.position}</p>
-
-            <div className="mt-4 space-y-4">
-              <div className="bg-[#EAF5EC] rounded-lg p-3">
-                <p className="text-xs font-medium text-[#4EA85E]">내 이력서가 자동으로 첨부됩니다</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">지원 메시지</label>
-                <textarea value={message} onChange={(e) => setMessage(e.target.value)}
-                  placeholder="지원 동기를 간략히 작성해주세요." className="input-field" style={{ minHeight: 100 }} />
-              </div>
+          <div className="relative bg-white rounded-xl border border-border w-full max-w-md p-6">
+            <h2 className="text-base font-bold text-foreground mb-3">지원 확인</h2>
+            <p className="text-sm text-foreground leading-relaxed">
+              <span className="font-bold text-[#4EA85E]">{inst.name}</span>에{' '}
+              <span className="font-bold text-[#4EA85E]">{applyingFor.position}</span>으로 지원하시겠습니까?
+            </p>
+            <div className="mt-4 bg-[#EAF5EC] rounded-lg p-3">
+              <p className="text-xs font-medium text-[#4EA85E]">내 이력서가 자동으로 첨부됩니다.</p>
+              <p className="text-[11px] text-[#4EA85E]/80 mt-1">제출 후에도 마이페이지에서 지원취소가 가능합니다.</p>
             </div>
 
             <div className="flex gap-2 mt-5">
               <button onClick={() => setApplyingFor(null)} className="flex-1 py-2.5 border border-border text-foreground/70 font-medium rounded-xl text-sm">취소</button>
               <button onClick={handleSubmitApplication} disabled={submitting}
                 className="flex-1 py-2.5 bg-[#66c477] hover:bg-[#4EA85E] text-white font-semibold rounded-xl text-sm disabled:opacity-50 flex items-center justify-center">
-                {submitting ? <ButtonSpinner /> : '지원 제출'}
+                {submitting ? <ButtonSpinner /> : '지원하기'}
               </button>
             </div>
           </div>

@@ -94,7 +94,7 @@ export default function ResumeViewPage() {
 
   const age = calcAge(resume.birth_date);
   const exps = (resume.experiences || []) as Exp[];
-  const certs = (resume.certificates || []) as { name: string; needs_reentry?: boolean }[];
+  const certs = (resume.certificates || []) as { name: string; issuer?: string }[];
 
   return (
     <div className="max-w-[800px] mx-auto px-4 py-8">
@@ -151,19 +151,21 @@ export default function ResumeViewPage() {
           </table>
         </div>
 
-        {/* 소유 자격 */}
+        {/* 자격증 및 능력사항 */}
         {certs.length > 0 && (
-          <Section title="소유 자격">
+          <Section title="자격증 및 능력사항">
             <table className="w-full border-collapse text-[12px]" style={{ borderTop: '2px solid #222' }}>
               <thead>
                 <tr className="bg-[#f5f5f5]">
                   <Th>자격증명</Th>
+                  <Th>발행기관</Th>
                 </tr>
               </thead>
               <tbody>
                 {certs.map((c, i) => (
                   <tr key={i}>
                     <Td>{c.name}</Td>
+                    <Td>{c.issuer || '-'}</Td>
                   </tr>
                 ))}
               </tbody>

@@ -10,11 +10,10 @@ import PhotoUpload from '@/components/PhotoUpload';
 import { PageSpinner, ButtonSpinner } from '@/components/Spinner';
 import type { Resume } from '@/types/database';
 import { useToast } from '@/components/Toast';
-import { CERTIFICATES, CERT_OTHER, isFixedCertificate } from '@/constants/certificates';
 import { CAREER_ROLES } from '@/constants/positions';
 import { DEGREE_YEARS } from '@/constants/degreeYears';
 
-interface Certificate { name: string; needs_reentry?: boolean }
+interface Certificate { name: string; issuer: string }
 interface Experience { institution: string; startDate: string; endDate: string; isCurrent: boolean; role: string; age_group: string }
 
 const ageGroupOptions = ['만3세', '만4세', '만5세', '혼합연령', '무관'];
@@ -36,7 +35,7 @@ export default function ResumeEdit() {
   const [email, setEmail] = useState('');
   const [university, setUniversity] = useState('');
   const [portfolio, setPortfolio] = useState('');
-  const [certificates, setCertificates] = useState<Certificate[]>([{ name: '' }]);
+  const [certificates, setCertificates] = useState<Certificate[]>([{ name: '', issuer: '' }]);
   const [universityName, setUniversityName] = useState('');
   const [major, setMajor] = useState('');
   const [degreeYears, setDegreeYears] = useState<number | ''>('');
@@ -102,9 +101,9 @@ export default function ResumeEdit() {
       });
   }, [user, authLoading, teacherProfile, profile, supabase]);
 
-  const setCertName = (i: number, val: string) =>
-    setCertificates((prev) => prev.map((c, j) => (j === i ? { name: val } : c)));
-  const addCert = () => setCertificates((prev) => [...prev, { name: '' }]);
+  const setCertField = (i: number, key: 'name' | 'issuer', val: string) =>
+    setCertificates((prev) => prev.map((c, j) => (j === i ? { ...c, [key]: val } : c)));
+  const addCert = () => setCertificates((prev) => [...prev, { name: '', issuer: '' }]);
   const removeCert = (i: number) => setCertificates((prev) => prev.filter((_, j) => j !== i));
 
   const setExp = (i: number, key: keyof Experience, val: string | boolean) =>
@@ -124,7 +123,7 @@ export default function ResumeEdit() {
       affiliation: university || null,
       introduction,
       portfolio: portfolio || null,
-      certificates: certificates.filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim() })),
+      certificates: certificates.filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim(), issuer: c.issuer.trim() })),
       experiences,
       photo_url: photoUrl,
       university_name: universityName || null,
@@ -192,10 +191,10 @@ export default function ResumeEdit() {
       </div>
 
       {/* 이력서 본문 */}
-      <div ref={resumeRef} className="bg-white rounded-2xl border border-[#E3EADF] overflow-hidden">
+      <div ref={resumeRef} className="bg-white rounded-2xl border border-[#C5D4CA] overflow-hidden">
 
         {/* 사진 + 기본 인적사항 — 이력서 상단 */}
-        <div className="p-6 border-b border-[#E3EADF]">
+        <div className="p-6 border-b border-[#C5D4CA]">
           <h2 className="text-sm font-bold text-[#4EA85E] mb-4 flex items-center gap-1.5">
             <Icon name="user" size={16} /> 인적사항
           </h2>
@@ -258,57 +257,45 @@ export default function ResumeEdit() {
           </div>
         </div>
 
-        {/* 소유 자격 */}
-        <div className="p-6 border-b border-[#E3EADF]">
+        {/* 자격증 및 능력사항 */}
+        <div className="p-6 border-b border-[#C5D4CA]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold text-[#4EA85E] flex items-center gap-1.5">
-              <Icon name="check" size={16} /> 소유 자격
+              <Icon name="check" size={16} /> 자격증 및 능력사항
             </h2>
             <button type="button" onClick={addCert} className="text-xs font-semibold bg-[#EAF5EC] text-[#4EA85E] px-3 py-1.5 rounded-full hover:bg-[#A5D6A7]/40">
               + 자격 추가
             </button>
           </div>
           <div className="space-y-2">
-            {certificates.map((cert, i) => {
-              const isOther = cert.name !== '' && !isFixedCertificate(cert.name);
-              const selectValue = cert.name === '' ? '' : isOther ? CERT_OTHER : cert.name;
-              return (
-              <div key={i} className="space-y-2">
-                <div className="flex gap-3 items-center">
-                  <select
-                    value={selectValue}
-                    onChange={(e) => {
-                      if (e.target.value === CERT_OTHER) setCertName(i, ' ');
-                      else setCertName(i, e.target.value);
-                    }}
-                    className="input-field flex-1 min-w-0"
-                  >
-                    <option value="">자격증 선택</option>
-                    {CERTIFICATES.map((c) => <option key={c} value={c}>{c}</option>)}
-                    <option value={CERT_OTHER}>{CERT_OTHER}</option>
-                  </select>
-                  {certificates.length > 1 && (
-                    <button type="button" onClick={() => removeCert(i)} className="px-2 text-muted hover:text-danger text-sm flex-shrink-0">x</button>
-                  )}
-                </div>
-                {isOther && (
+            {certificates.map((cert, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1 min-w-0">
                   <input
                     type="text"
-                    value={cert.name.trim() === '' ? '' : cert.name}
-                    onChange={(e) => setCertName(i, e.target.value)}
-                    placeholder="직접 입력 (예: 놀이교육지도사)"
-                    className="input-field w-full"
-                    autoFocus
+                    value={cert.name}
+                    onChange={(e) => setCertField(i, 'name', e.target.value)}
+                    placeholder="자격증명 (예: 유치원 정교사 2급)"
+                    className="input-field"
                   />
+                  <input
+                    type="text"
+                    value={cert.issuer}
+                    onChange={(e) => setCertField(i, 'issuer', e.target.value)}
+                    placeholder="발행기관 (예: 교육부)"
+                    className="input-field"
+                  />
+                </div>
+                {certificates.length > 1 && (
+                  <button type="button" onClick={() => removeCert(i)} className="px-2 text-muted hover:text-danger text-sm flex-shrink-0">x</button>
                 )}
               </div>
-              );
-            })}
+            ))}
           </div>
         </div>
 
         {/* 경력사항 */}
-        <div className="p-6 border-b border-[#E3EADF]">
+        <div className="p-6 border-b border-[#C5D4CA]">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-[#4EA85E] flex items-center gap-1.5">
               <Icon name="bookmark" size={16} /> 경력사항
@@ -318,7 +305,7 @@ export default function ResumeEdit() {
             </button>
           </div>
           {experiences.length === 0 ? (
-            <div className="text-center py-10 bg-[#F7FAF6] rounded-xl border border-dashed border-[#E3EADF]">
+            <div className="text-center py-10 bg-[#F7FAF6] rounded-xl border border-dashed border-[#C5D4CA]">
               <Icon name="building" size={28} className="mx-auto text-muted/30 mb-2" />
               <p className="text-sm text-muted">등록된 경력이 없습니다</p>
               <button type="button" onClick={addExp} className="mt-2 text-xs font-semibold text-[#4EA85E] hover:underline">첫 경력 추가하기</button>
@@ -326,7 +313,7 @@ export default function ResumeEdit() {
           ) : (
             <div className="space-y-3">
               {experiences.map((exp, i) => (
-                <div key={i} className="bg-[#F7FAF6] rounded-xl p-4 border border-[#E3EADF] relative">
+                <div key={i} className="bg-[#F7FAF6] rounded-xl p-4 border border-[#C5D4CA] relative">
                   <button type="button" onClick={() => removeExp(i)} className="absolute top-3 right-3 text-muted hover:text-danger text-xs">삭제</button>
                   <div className="mb-3">
                     <Field label="기관명">
@@ -377,7 +364,7 @@ export default function ResumeEdit() {
         </div>
 
         {/* 자기소개 */}
-        <div className="p-6 border-b border-[#E3EADF]">
+        <div className="p-6 border-b border-[#C5D4CA]">
           <h2 className="text-sm font-bold text-[#4EA85E] mb-3 flex items-center gap-1.5">
             <Icon name="pencil" size={16} /> 자기소개
           </h2>

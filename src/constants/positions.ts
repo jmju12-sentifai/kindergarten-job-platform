@@ -1,9 +1,9 @@
 export const POSITIONS = [
-  '원감',
   '담임교사',
   '부담임+방과후교사',
   '방과후교사',
   '단기대체교사',
+  '원감',
 ] as const;
 export type PositionType = typeof POSITIONS[number];
 

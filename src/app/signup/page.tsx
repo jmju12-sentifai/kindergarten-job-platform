@@ -19,7 +19,7 @@ function SignupSplitContent() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* 구직자 (왼쪽) */}
-          <Link href={`/signup/teacher${kakaoSuffix}`} className="group bg-white rounded-2xl p-8 border-2 border-[#E3EADF] hover:border-[#66c477] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all text-center">
+          <Link href={`/signup/teacher${kakaoSuffix}`} className="group bg-white rounded-2xl p-8 border-2 border-[#C5D4CA] hover:border-[#66c477] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all text-center">
             <div className="w-16 h-16 rounded-full bg-[#EAF5EC] flex items-center justify-center text-[#4EA85E] mx-auto mb-4">
               <Icon name="user" size={32} stroke={1.6} />
             </div>
@@ -36,18 +36,18 @@ function SignupSplitContent() {
           </Link>
 
           {/* 구인자 (오른쪽) */}
-          <Link href={`/signup/institution${kakaoSuffix}`} className="group bg-white rounded-2xl p-8 border-2 border-[#E3EADF] hover:border-[#66c477] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all text-center">
-            <div className="w-16 h-16 rounded-full bg-[#EAF5EC] flex items-center justify-center text-[#4EA85E] mx-auto mb-4">
+          <Link href={`/signup/institution${kakaoSuffix}`} className="group bg-white rounded-2xl p-8 border-2 border-[#FAD7C8] hover:border-[#E86830] hover:shadow-[0_8px_24px_rgba(232,104,48,0.15)] transition-all text-center">
+            <div className="w-16 h-16 rounded-full bg-[#FCEDE5] flex items-center justify-center text-[#E86830] mx-auto mb-4">
               <Icon name="building" size={32} stroke={1.6} />
             </div>
             <h2 className="text-lg font-bold text-foreground mb-1">구인자 (기관)</h2>
             <p className="text-sm text-muted mb-4">교사를 채용하고 싶어요</p>
             <ul className="text-xs text-muted text-left space-y-1.5">
-              <li className="flex items-center gap-2"><Icon name="check" size={14} className="text-[#4EA85E]" /> 공고 등록 및 관리</li>
-              <li className="flex items-center gap-2"><Icon name="check" size={14} className="text-[#4EA85E]" /> 지원자 이력서 열람</li>
-              <li className="flex items-center gap-2"><Icon name="check" size={14} className="text-[#4EA85E]" /> 채용 상태 관리</li>
+              <li className="flex items-center gap-2"><Icon name="check" size={14} className="text-[#E86830]" /> 공고 등록 및 관리</li>
+              <li className="flex items-center gap-2"><Icon name="check" size={14} className="text-[#E86830]" /> 지원자 이력서 열람</li>
+              <li className="flex items-center gap-2"><Icon name="check" size={14} className="text-[#E86830]" /> 채용 상태 관리</li>
             </ul>
-            <div className="mt-5 px-4 py-2.5 border-2 border-[#66c477] text-[#4EA85E] text-sm font-semibold rounded-full group-hover:bg-[#EAF5EC] transition-colors">
+            <div className="mt-5 px-4 py-2.5 bg-[#E86830] text-white text-sm font-semibold rounded-full group-hover:bg-[#D45525] transition-colors">
               기관으로 가입하기
             </div>
           </Link>

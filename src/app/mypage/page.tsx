@@ -27,6 +27,7 @@ const statusColors: Record<ApplicationStatus, string> = {
   '면접요청': 'bg-success/10 text-success',
   '합격': 'bg-success/15 text-success',
   '불합격': 'bg-danger/10 text-danger',
+  '지원취소': 'bg-gray-100 text-muted',
 };
 
 export default function MyPage() {
@@ -42,17 +43,24 @@ export default function MyPage() {
   const [loading, setLoading] = useState(true);
 
   const handleDeletePosting = async () => {
-    if (!posting || !confirm('공고를 삭제하시겠습니까? 관련 지원서도 모두 삭제됩니다.')) return;
-    await supabase.from('postings').delete().eq('id', posting.id);
+    if (!posting || !confirm('공고를 삭제하시겠습니까?\n받은 지원서는 마이페이지에서 계속 열람할 수 있습니다.')) return;
+    await supabase.from('postings').update({ archived_at: new Date().toISOString() }).eq('id', posting.id);
     setPosting(null);
-    setInstitutionApps([]);
     toast('공고가 삭제되었습니다');
   };
 
   const handleCancelApplication = async (appId: string) => {
-    if (!confirm('지원을 취소하시겠습니까?')) return;
-    await supabase.from('applications').delete().eq('id', appId);
-    setTeacherApps((prev) => prev.filter((a) => a.id !== appId));
+    if (!confirm('지원을 취소하시겠습니까?\n취소 후에도 기관에서는 이력서를 열람할 수 있습니다.')) return;
+    const { data, error } = await supabase
+      .from('applications')
+      .update({ status: '지원취소' })
+      .eq('id', appId)
+      .select();
+    if (error || !data || data.length === 0) {
+      toast('지원 취소에 실패했습니다. 잠시 후 다시 시도해주세요.', 'error');
+      return;
+    }
+    setTeacherApps((prev) => prev.map((a) => (a.id === appId ? { ...a, status: '지원취소' } : a)));
     toast('지원이 취소되었습니다');
   };
 
@@ -118,6 +126,7 @@ export default function MyPage() {
           .from('postings')
           .select('*, position_entries(*)')
           .eq('institution_id', user!.id)
+          .is('archived_at', null)
           .order('created_at', { ascending: false })
           .limit(1)
           .single(),
@@ -303,14 +312,20 @@ export default function MyPage() {
               const expired = new Date(posting.deadline).getTime() < Date.now();
               return (
                 <div className={`bg-white border rounded-lg p-4 ${expired ? 'border-border/50 opacity-60' : 'border-border'}`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="min-w-0 flex-1">
                       <Link href={`/jobs/${posting.id}`} className="text-xs font-semibold text-foreground hover:text-[#4EA85E]">{posting.title}</Link>
                       {expired && <span className="ml-2 text-[10px] text-danger font-semibold">만료됨</span>}
                     </div>
-                    <div className="flex gap-2">
-                      {!expired && <Link href="/jobs/new" className="text-[11px] text-[#4EA85E] hover:underline">수정</Link>}
-                      <button onClick={handleDeletePosting} className="text-[11px] text-danger hover:underline">삭제</button>
+                    <div className="flex gap-1.5 flex-shrink-0">
+                      {!expired && (
+                        <Link href="/jobs/new" className="px-3 py-1.5 text-[11px] font-bold text-[#4EA85E] bg-[#EAF5EC] border border-[#A5D6A7] rounded hover:bg-[#A5D6A7]/40 transition-colors">
+                          수정
+                        </Link>
+                      )}
+                      <button onClick={handleDeletePosting} className="px-3 py-1.5 text-[11px] font-bold text-danger bg-danger/5 border border-danger/30 rounded hover:bg-danger/10 transition-colors">
+                        삭제
+                      </button>
                     </div>
                   </div>
                   <p className="text-[11px] text-muted">마감: {new Date(posting.deadline).toLocaleDateString('ko-KR')}</p>
@@ -337,40 +352,51 @@ export default function MyPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {institutionApps.map((app) => (
-                  <Link
-                    key={app.id}
-                    href={`/talents/${app.teacher_id}`}
-                    onClick={() => markAsViewed(app.id)}
-                    className={`block bg-white border rounded-lg p-4 transition-all hover:shadow-sm ${
-                      app.viewed_at ? 'border-border' : 'border-[#A5D6A7] bg-[#F7FAF6]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 text-[13px]">
-                      <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center ${
-                        app.viewed_at ? 'bg-gray-100 text-muted' : 'bg-[#EAF5EC] text-[#4EA85E]'
-                      }`}>
-                        <span className="text-xs font-semibold">{app.teacher_profiles.name.charAt(0)}</span>
+                {institutionApps.map((app) => {
+                  const isCancelled = app.status === '지원취소';
+                  return (
+                    <Link
+                      key={app.id}
+                      href={`/talents/${app.teacher_id}`}
+                      onClick={() => markAsViewed(app.id)}
+                      className={`block bg-white border rounded-lg p-4 transition-all hover:shadow-sm ${
+                        isCancelled
+                          ? 'border-border opacity-60'
+                          : app.viewed_at
+                          ? 'border-border'
+                          : 'border-[#A5D6A7] bg-[#F7FAF6]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 text-[13px]">
+                        <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center ${
+                          isCancelled || app.viewed_at ? 'bg-gray-100 text-muted' : 'bg-[#EAF5EC] text-[#4EA85E]'
+                        }`}>
+                          <span className="text-xs font-semibold">{app.teacher_profiles.name.charAt(0)}</span>
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col gap-0.5 sm:grid sm:grid-cols-3 sm:gap-2 sm:items-center">
+                          <span className="text-muted text-[12px] truncate">
+                            이름 · <span className="text-foreground font-semibold">{app.teacher_profiles.name}</span>
+                          </span>
+                          <span className="text-muted text-[12px] truncate">
+                            지원분야 · <span className="text-foreground">{app.position_entries.position}</span>
+                          </span>
+                          <span className="text-muted text-[12px] truncate">
+                            지원일 · <span className="text-foreground">{new Date(app.applied_at).toLocaleDateString('ko-KR')}</span>
+                          </span>
+                        </div>
+                        <span className={`text-[11px] font-bold flex-shrink-0 px-2 py-1 rounded-full ${
+                          isCancelled
+                            ? 'bg-danger/10 text-danger'
+                            : app.viewed_at
+                            ? 'bg-gray-100 text-muted'
+                            : 'bg-[#E86830]/10 text-[#E86830]'
+                        }`}>
+                          {isCancelled ? '지원취소' : app.viewed_at ? '확인' : '미확인'}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0 flex flex-col gap-0.5 sm:grid sm:grid-cols-3 sm:gap-2 sm:items-center">
-                        <span className="text-muted text-[12px] truncate">
-                          이름 · <span className="text-foreground font-semibold">{app.teacher_profiles.name}</span>
-                        </span>
-                        <span className="text-muted text-[12px] truncate">
-                          지원분야 · <span className="text-foreground">{app.position_entries.position}</span>
-                        </span>
-                        <span className="text-muted text-[12px] truncate">
-                          지원일 · <span className="text-foreground">{new Date(app.applied_at).toLocaleDateString('ko-KR')}</span>
-                        </span>
-                      </div>
-                      <span className={`text-[11px] font-bold flex-shrink-0 px-2 py-1 rounded-full ${
-                        app.viewed_at ? 'bg-gray-100 text-muted' : 'bg-[#E86830]/10 text-[#E86830]'
-                      }`}>
-                        {app.viewed_at ? '확인' : '미확인'}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>

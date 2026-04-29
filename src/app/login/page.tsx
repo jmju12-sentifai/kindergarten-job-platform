@@ -87,7 +87,7 @@ function LoginContent() {
           <div className="flex-1 h-px bg-border" />
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 border border-[#E3EADF] space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 border border-[#C5D4CA] space-y-4">
           <label className="block">
             <span className="text-xs font-semibold text-foreground">이메일</span>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@email.com" required className="input-field mt-1" />

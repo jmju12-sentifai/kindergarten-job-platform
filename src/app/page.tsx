@@ -34,6 +34,7 @@ export default function Home() {
     supabase
       .from('postings')
       .select('*, position_entries(*), institution_profiles(*)')
+      .is('archived_at', null)
       .gte('deadline', oneMonthAgo.toISOString().split('T')[0])
       .order('created_at', { ascending: false })
       .limit(6)
@@ -80,16 +81,16 @@ export default function Home() {
         <div className={`grid gap-3 ${userType ? '' : 'md:grid-cols-2'}`}>
           {userType !== 'institution' && (
             <div className="relative rounded-2xl bg-[#A5D6A7]/40 p-5 overflow-hidden">
-              <p className="text-xs font-semibold text-[#4EA85E] mb-1">선생님이시라면</p>
-              <h3 className="text-lg font-bold text-foreground leading-snug">이력서 한 번에,<br />여러 유치원에서 연락이 와요</h3>
+              <p className="text-xs font-semibold text-[#4EA85E] mb-1">유치원교사라면</p>
+              <h3 className="text-lg font-bold text-foreground leading-snug">모든 유치원에 버튼 하나로<br />이력서 지원 가능해요!!</h3>
               <Link href="/resume/edit" className="inline-flex items-center gap-1 mt-3 text-xs font-semibold bg-white text-[#4EA85E] px-3.5 py-1.5 rounded-full hover:bg-[#EAF5EC]">이력서 등록하기 <span aria-hidden>→</span></Link>
               <div className="absolute -right-3 -bottom-3 text-[#4EA85E]/25"><Icon name="mail" size={110} stroke={1.4} /></div>
             </div>
           )}
           {userType !== 'teacher' && (
             <div className="relative rounded-2xl bg-[#a7dba7]/50 p-5 overflow-hidden">
-              <p className="text-xs font-semibold text-[#4EA85E] mb-1">원장님이시라면</p>
-              <h3 className="text-lg font-bold text-foreground leading-snug">딱 맞는 선생님,<br />교집합이 골라드려요</h3>
+              <p className="text-xs font-semibold text-[#4EA85E] mb-1">사립유치원장님이시라면</p>
+              <h3 className="text-lg font-bold text-foreground leading-snug">교사구인글 한번에<br />지원교사 이력서 보기 인쇄까지 끝!!</h3>
               <Link href="/jobs/new" className="inline-flex items-center gap-1 mt-3 text-xs font-semibold bg-white text-[#4EA85E] px-3.5 py-1.5 rounded-full hover:bg-[#EAF5EC]">공고 등록하기 <span aria-hidden>→</span></Link>
               <div className="absolute -right-3 -bottom-3 text-[#4EA85E]/25"><Icon name="target" size={110} stroke={1.4} /></div>
             </div>
@@ -132,7 +133,7 @@ export default function Home() {
                     window.location.href = `/jobs?region=${encodeURIComponent(r)}`;
                   }
                 }}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${active ? 'bg-[#a7dba7] text-foreground border-[#a7dba7]' : 'bg-white text-foreground border-[#E3EADF] hover:bg-[#EAF5EC] hover:border-[#A5D6A7]'}`}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${active ? 'bg-[#a7dba7] text-foreground border-[#a7dba7]' : 'bg-white text-foreground border-[#C5D4CA] hover:bg-[#EAF5EC] hover:border-[#A5D6A7]'}`}
               >
                 {r}{hasSubregions ? ' ▾' : ''}
               </button>
@@ -145,7 +146,7 @@ export default function Home() {
               <Link
                 key={sub}
                 href={`/jobs?region=${encodeURIComponent(selectedRegion)}&sub=${encodeURIComponent(sub)}`}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#E3EADF] hover:bg-[#EAF5EC] hover:border-[#A5D6A7]"
+                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#C5D4CA] hover:bg-[#EAF5EC] hover:border-[#A5D6A7]"
               >
                 {sub}
               </Link>
@@ -175,7 +176,7 @@ export default function Home() {
               const inst = posting.institution_profiles;
               return (
                 <Link key={posting.id} href={`/jobs/${posting.id}`}
-                  className="bg-white rounded-2xl p-5 border border-[#E3EADF] hover:border-[#A5D6A7] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all">
+                  className="bg-white rounded-2xl p-5 border border-[#C5D4CA] hover:border-[#A5D6A7] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-9 h-9 rounded-full bg-[#EAF5EC] flex items-center justify-center text-[#4EA85E]"><Icon name="home" size={18} /></div>
                     <div className="min-w-0">
@@ -189,8 +190,8 @@ export default function Home() {
                   <h3 className="text-[15px] font-bold text-foreground mb-1 leading-snug line-clamp-2">{posting.title}</h3>
                   {posting.commute_areas && posting.commute_areas.length > 0 && (
                     <p className="text-[11px] text-muted/70 mb-2">
-                      출퇴근 {posting.commute_areas.slice(0, 2).join(', ')}
-                      {posting.commute_areas.length > 2 && ` 외 ${posting.commute_areas.length - 2}`}
+                      출퇴근 가능지역 {posting.commute_areas.slice(0, 3).join(', ')}
+                      {posting.commute_areas.length > 3 && ` 외 ${posting.commute_areas.length - 3}`}
                     </p>
                   )}
                   <div className="flex flex-wrap gap-1.5">
@@ -206,7 +207,7 @@ export default function Home() {
             })}
           </div>
         ) : (
-          <div className="text-center py-16 bg-white rounded-2xl border border-[#E3EADF]">
+          <div className="text-center py-16 bg-white rounded-2xl border border-[#C5D4CA]">
             <Icon name="search" size={40} className="text-muted mx-auto mb-3" />
             <p className="text-sm text-muted">아직 등록된 공고가 없습니다.</p>
             <Link href="/jobs/new" className="inline-block mt-3 text-xs font-semibold text-[#4EA85E] hover:underline">첫 공고 등록하기 →</Link>

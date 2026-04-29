@@ -10,7 +10,6 @@ import PhotoUpload from '@/components/PhotoUpload';
 import AddressSearch from '@/components/AddressSearch';
 import { PageSpinner, ButtonSpinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
-import { CERTIFICATES, CERT_OTHER, isFixedCertificate } from '@/constants/certificates';
 
 export default function EditProfile() {
   const router = useRouter();
@@ -22,7 +21,7 @@ export default function EditProfile() {
   const [tForm, setTForm] = useState({
     name: '', birthDate: '', address: '', phone: '', university: '', photoUrl: null as string | null,
   });
-  const [certificates, setCertificates] = useState<{ name: string; needs_reentry?: boolean }[]>([{ name: '' }]);
+  const [certificates, setCertificates] = useState<{ name: string; issuer: string }[]>([{ name: '', issuer: '' }]);
 
   // 기관 폼
   const [iForm, setIForm] = useState({
@@ -83,7 +82,7 @@ export default function EditProfile() {
       phone: tForm.phone,
       university: tForm.university || null,
       photo_url: tForm.photoUrl,
-      certificates: certificates.filter((c) => c.name.trim()),
+      certificates: certificates.filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim(), issuer: c.issuer.trim() })),
     }).eq('id', user.id);
 
     await refreshProfile();
@@ -134,8 +133,8 @@ export default function EditProfile() {
       const s = [...f.nearbyStations]; s[idx] = val; return { ...f, nearbyStations: s };
     });
   };
-  const setCertName = (i: number, val: string) =>
-    setCertificates((prev) => prev.map((c, j) => (j === i ? { name: val } : c)));
+  const setCertField = (i: number, key: 'name' | 'issuer', val: string) =>
+    setCertificates((prev) => prev.map((c, j) => (j === i ? { ...c, [key]: val } : c)));
 
   return (
     <div className="max-w-[520px] mx-auto px-4 py-8">
@@ -149,7 +148,7 @@ export default function EditProfile() {
       {isTeacher ? (
         <div className="space-y-4">
           {/* 사진 */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E3EADF]">
+          <div className="bg-white rounded-2xl p-6 border border-[#C5D4CA]">
             <div className="flex items-center gap-4">
               <div className="w-[80px] h-[100px] rounded-lg border border-border bg-[#F7FAF6] overflow-hidden flex items-center justify-center flex-shrink-0">
                 {tForm.photoUrl ? (
@@ -167,7 +166,7 @@ export default function EditProfile() {
           </div>
 
           {/* 기본 정보 */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E3EADF] space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-[#C5D4CA] space-y-4">
             <h3 className="text-sm font-bold text-foreground">기본 정보</h3>
             <Field label="이름">
               <input type="text" value={tForm.name} onChange={(e) => setT('name', e.target.value)} className="input-field" />
@@ -187,44 +186,32 @@ export default function EditProfile() {
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold text-foreground">소유 자격</span>
-                <button type="button" onClick={() => setCertificates((p) => [...p, { name: '' }])} className="text-[11px] font-semibold text-[#4EA85E]">+ 추가</button>
+                <span className="text-xs font-semibold text-foreground">자격증 및 능력사항</span>
+                <button type="button" onClick={() => setCertificates((p) => [...p, { name: '', issuer: '' }])} className="text-[11px] font-semibold text-[#4EA85E]">+ 추가</button>
               </div>
-              {certificates.map((cert, i) => {
-                const isOther = cert.name !== '' && !isFixedCertificate(cert.name);
-                const selectValue = cert.name === '' ? '' : isOther ? CERT_OTHER : cert.name;
-                return (
-                <div key={i} className="space-y-2 mb-2">
-                  <div className="flex gap-2">
-                    <select
-                      value={selectValue}
-                      onChange={(e) => {
-                        if (e.target.value === CERT_OTHER) setCertName(i, ' ');
-                        else setCertName(i, e.target.value);
-                      }}
-                      className="input-field flex-1 min-w-0"
-                    >
-                      <option value="">자격증 선택</option>
-                      {CERTIFICATES.map((c) => <option key={c} value={c}>{c}</option>)}
-                      <option value={CERT_OTHER}>{CERT_OTHER}</option>
-                    </select>
-                    {certificates.length > 1 && (
-                      <button type="button" onClick={() => setCertificates((p) => p.filter((_, j) => j !== i))} className="px-2 text-muted hover:text-danger text-sm flex-shrink-0">x</button>
-                    )}
-                  </div>
-                  {isOther && (
+              {certificates.map((cert, i) => (
+                <div key={i} className="flex gap-2 items-center mb-2">
+                  <div className="grid grid-cols-2 gap-2 flex-1 min-w-0">
                     <input
                       type="text"
-                      value={cert.name.trim() === '' ? '' : cert.name}
-                      onChange={(e) => setCertName(i, e.target.value)}
-                      placeholder="직접 입력 (예: 놀이교육지도사)"
-                      className="input-field w-full"
-                      autoFocus
+                      value={cert.name}
+                      onChange={(e) => setCertField(i, 'name', e.target.value)}
+                      placeholder="자격증명"
+                      className="input-field"
                     />
+                    <input
+                      type="text"
+                      value={cert.issuer}
+                      onChange={(e) => setCertField(i, 'issuer', e.target.value)}
+                      placeholder="발행기관"
+                      className="input-field"
+                    />
+                  </div>
+                  {certificates.length > 1 && (
+                    <button type="button" onClick={() => setCertificates((p) => p.filter((_, j) => j !== i))} className="px-2 text-muted hover:text-danger text-sm flex-shrink-0">x</button>
                   )}
                 </div>
-                );
-              })}
+              ))}
             </div>
           </div>
 
@@ -234,7 +221,7 @@ export default function EditProfile() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl p-6 border border-[#E3EADF] space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-[#C5D4CA] space-y-4">
             <h3 className="text-sm font-bold text-foreground">기관 정보</h3>
             <Field label="기관명">
               <input type="text" value={iForm.name} onChange={(e) => setI('name', e.target.value)} className="input-field" />

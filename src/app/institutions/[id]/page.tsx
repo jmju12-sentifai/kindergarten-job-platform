@@ -34,6 +34,7 @@ export default function InstitutionDetailPage() {
         .from('postings')
         .select('*, position_entries(*), institution_profiles!inner(*)')
         .eq('institution_id', institutionId)
+        .is('archived_at', null)
         .single();
       setPosting(postingData as PostingWithPositions | null);
 

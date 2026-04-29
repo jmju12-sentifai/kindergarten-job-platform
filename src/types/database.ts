@@ -8,7 +8,7 @@ export type EmploymentType = '정규직' | '기간제' | '시간제';
 export type KindergartenType = '국공립(단설)' | '국공립(병설)' | '사립(개인)' | '사립(법인)' | '사립(종교)';
 export type EvalGrade = 'A' | 'B' | 'C' | 'D';
 // ApplicationStatus는 더 이상 사용하지 않음 (viewed_at 플래그로 대체) — Phase 4에서 사용처 제거 예정
-export type ApplicationStatus = '검토중' | '면접요청' | '합격' | '불합격';
+export type ApplicationStatus = '검토중' | '면접요청' | '합격' | '불합격' | '지원취소';
 export type NotificationType = 'application_received' | 'status_changed' | 'interview_request' | 'result_notification';
 export type PurposeType = '교원모집' | '구인';
 
@@ -29,8 +29,8 @@ export interface TeacherProfile {
   photo_url: string | null;
   affiliation: string | null;
   university: string | null;
-  // certificates 는 resumes 테이블로 일원화 (신규 형식: { name: string; needs_reentry?: boolean })
-  certificates: { name: string; needs_reentry?: boolean }[];
+  // certificates 는 resumes 테이블로 일원화 (v7 형식: { name: string; issuer: string })
+  certificates: { name: string; issuer: string }[];
   created_at: string;
 }
 
@@ -68,6 +68,7 @@ export interface Posting {
   description: string;
   deadline: string;
   commute_areas: string[];
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -101,8 +102,8 @@ export interface Resume {
   name: string;
   birth_date: string;
   phone: string;
-  // 신규 형식: issuer 제거, 매칭 실패 시 needs_reentry 플래그
-  certificates: { name: string; needs_reentry?: boolean }[];
+  // v7: { name, issuer } 자유입력. issuer 빈 문자열 허용.
+  certificates: { name: string; issuer: string }[];
   affiliation: string | null;
   // description 필드 제거됨
   experiences: {

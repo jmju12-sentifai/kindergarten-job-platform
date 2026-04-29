@@ -14,10 +14,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFieldValidation } from '@/lib/useFieldValidation';
 import FieldHint from '@/components/FieldHint';
 import { PHOTO_GUIDANCE } from '@/constants/photoGuidance';
-import { CERTIFICATES, CERT_OTHER, isFixedCertificate } from '@/constants/certificates';
 import { DEGREE_YEARS } from '@/constants/degreeYears';
 
-interface Certificate { name: string }
+interface Certificate { name: string; issuer: string }
 
 function TeacherSignupContent() {
   const router = useRouter();
@@ -55,14 +54,14 @@ function TeacherSignupContent() {
     passwordConfirm: '',
     university: '',
   });
-  const [certificates, setCertificates] = useState<Certificate[]>([{ name: '' }]);
+  const [certificates, setCertificates] = useState<Certificate[]>([{ name: '', issuer: '' }]);
 
   const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
 
-  const setCertName = (idx: number, val: string) => {
-    setCertificates((prev) => prev.map((c, i) => (i === idx ? { name: val } : c)));
+  const setCertField = (idx: number, key: 'name' | 'issuer', val: string) => {
+    setCertificates((prev) => prev.map((c, i) => (i === idx ? { ...c, [key]: val } : c)));
   };
-  const addCert = () => setCertificates((prev) => [...prev, { name: '' }]);
+  const addCert = () => setCertificates((prev) => [...prev, { name: '', issuer: '' }]);
   const removeCert = (idx: number) => setCertificates((prev) => prev.filter((_, i) => i !== idx));
 
   const handleKakao = async () => {
@@ -115,7 +114,7 @@ function TeacherSignupContent() {
         if (urls.length > 0) uploadedPhotoUrl = urls[0];
       }
 
-      const validCerts = certificates.filter((c) => c.name.trim());
+      const validCerts = certificates.filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim(), issuer: c.issuer.trim() }));
       await supabase.from('teacher_profiles').insert({
         id: userId,
         name: form.name,
@@ -171,7 +170,7 @@ function TeacherSignupContent() {
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {!isKakao && (
-          <div className="bg-white rounded-2xl p-6 border border-[#E3EADF] space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-[#C5D4CA] space-y-4">
             <h3 className="text-sm font-bold text-foreground">계정 정보</h3>
             <p className="text-[11px] text-muted -mt-3">로그인 시 사용할 이메일과 비밀번호입니다</p>
             <Field label="이메일" required>
@@ -197,7 +196,7 @@ function TeacherSignupContent() {
           )}
 
           {/* 기본 정보 */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E3EADF] space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-[#C5D4CA] space-y-4">
             <h3 className="text-sm font-bold text-foreground">기본 정보</h3>
             <Field label="이름" required>
               <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="홍길동" className="input-field" />
@@ -215,49 +214,35 @@ function TeacherSignupContent() {
               <input type="text" value={form.university} onChange={(e) => set('university', e.target.value)} placeholder="OO대학교 유아교육과" className="input-field" />
             </Field>
 
-            {/* 소유 자격 */}
+            {/* 자격증 및 능력사항 */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold text-foreground">소유 자격</span>
+                <span className="text-xs font-semibold text-foreground">자격증 및 능력사항</span>
                 <button type="button" onClick={addCert} className="text-[11px] font-semibold text-[#4EA85E] hover:underline">+ 추가</button>
               </div>
-              {certificates.map((cert, i) => {
-                const isOther = cert.name !== '' && !isFixedCertificate(cert.name);
-                const selectValue = cert.name === '' ? '' : isOther ? CERT_OTHER : cert.name;
-                return (
-                <div key={i} className="space-y-2 mb-2">
-                  <div className="flex gap-2">
-                    <select
-                      value={selectValue}
-                      onChange={(e) => {
-                        if (e.target.value === CERT_OTHER) setCertName(i, ' ');
-                        else setCertName(i, e.target.value);
-                      }}
-                      className="input-field flex-1 min-w-0"
-                    >
-                      <option value="">자격증 선택</option>
-                      {CERTIFICATES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                      <option value={CERT_OTHER}>{CERT_OTHER}</option>
-                    </select>
-                    {certificates.length > 1 && (
-                      <button type="button" onClick={() => removeCert(i)} className="px-2 text-muted hover:text-danger text-sm flex-shrink-0">x</button>
-                    )}
-                  </div>
-                  {isOther && (
+              {certificates.map((cert, i) => (
+                <div key={i} className="flex gap-2 items-center mb-2">
+                  <div className="grid grid-cols-2 gap-2 flex-1 min-w-0">
                     <input
                       type="text"
-                      value={cert.name.trim() === '' ? '' : cert.name}
-                      onChange={(e) => setCertName(i, e.target.value)}
-                      placeholder="직접 입력 (예: 놀이교육지도사)"
-                      className="input-field w-full"
-                      autoFocus
+                      value={cert.name}
+                      onChange={(e) => setCertField(i, 'name', e.target.value)}
+                      placeholder="자격증명"
+                      className="input-field"
                     />
+                    <input
+                      type="text"
+                      value={cert.issuer}
+                      onChange={(e) => setCertField(i, 'issuer', e.target.value)}
+                      placeholder="발행기관"
+                      className="input-field"
+                    />
+                  </div>
+                  {certificates.length > 1 && (
+                    <button type="button" onClick={() => removeCert(i)} className="px-2 text-muted hover:text-danger text-sm flex-shrink-0">x</button>
                   )}
                 </div>
-                );
-              })}
+              ))}
             </div>
 
             <div>

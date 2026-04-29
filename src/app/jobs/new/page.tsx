@@ -44,6 +44,7 @@ export default function NewJobPage() {
         .from('postings')
         .select('*, position_entries(*)')
         .eq('institution_id', user.id)
+        .is('archived_at', null)
         .single();
 
       if (data) {

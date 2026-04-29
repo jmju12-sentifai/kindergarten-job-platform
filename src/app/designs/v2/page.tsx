@@ -96,7 +96,7 @@ export default function V2() {
             <Link
               key={r}
               href={`/jobs?region=${encodeURIComponent(r)}`}
-              className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-white border border-[#E3EADF] hover:bg-[#EAF5EC] hover:border-[#A5D6A7]"
+              className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-white border border-[#C5D4CA] hover:bg-[#EAF5EC] hover:border-[#A5D6A7]"
               style={i === 0 ? { background: '#a7dba7', color: '#1F2B1F', borderColor: '#a7dba7' } : {}}
             >
               {r}
@@ -150,7 +150,7 @@ export default function V2() {
               <Link
                 key={job.id}
                 href={`/jobs/${job.id}`}
-                className="bg-white rounded-2xl p-5 border border-[#E3EADF] hover:border-[#A5D6A7] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all"
+                className="bg-white rounded-2xl p-5 border border-[#C5D4CA] hover:border-[#A5D6A7] hover:shadow-[0_8px_24px_rgba(102,196,119,0.15)] transition-all"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-9 h-9 rounded-full bg-[#EAF5EC] flex items-center justify-center text-[#4EA85E]">

@@ -190,7 +190,7 @@ function InstitutionSignupContent() {
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {!isKakao && (
-          <div className="bg-white rounded-2xl p-6 border border-[#E3EADF] space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-[#C5D4CA] space-y-4">
             <h3 className="text-sm font-bold text-foreground">계정 정보</h3>
             <p className="text-[11px] text-muted -mt-3">로그인 시 사용할 이메일과 비밀번호입니다</p>
             <Field label="이메일" required>
@@ -216,7 +216,7 @@ function InstitutionSignupContent() {
           )}
 
           {/* 기관 정보 */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E3EADF] space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-[#C5D4CA] space-y-4">
             <h3 className="text-sm font-bold text-foreground">기관 정보</h3>
             <Field label="기관명" required>
               <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="햇살유치원" className="input-field" />

@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else if (profile.user_type === 'institution') {
           const { data } = await supabase.from('institution_profiles').select('*').eq('id', userId).maybeSingle();
           institutionProfile = data;
-          const { count } = await supabase.from('postings').select('id', { count: 'exact', head: true }).eq('institution_id', userId);
+          const { count } = await supabase.from('postings').select('id', { count: 'exact', head: true }).eq('institution_id', userId).is('archived_at', null);
           hasPosting = (count ?? 0) > 0;
         }
 
