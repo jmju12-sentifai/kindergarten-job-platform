@@ -376,10 +376,10 @@ export default function ResumeEdit() {
           />
         </div>
 
-        {/* 포트폴리오/자기개발 */}
+        {/* 추가 안내 내용 */}
         <div className="p-6">
           <h2 className="text-sm font-bold text-[#4EA85E] mb-3 flex items-center gap-1.5">
-            <Icon name="star" size={16} /> 포트폴리오 / 자기개발
+            <Icon name="star" size={16} /> 추가 안내 내용
           </h2>
           <textarea
             value={portfolio}

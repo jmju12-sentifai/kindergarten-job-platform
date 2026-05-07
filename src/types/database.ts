@@ -149,6 +149,21 @@ export interface Notification {
   created_at: string;
 }
 
+export type KakaoDispatchStatus = 'sent' | 'failed' | 'skipped_invalid_phone';
+
+export interface KakaoDispatchLog {
+  id: string;
+  template_code: string;
+  recipient_phone: string;
+  recipient_institution_id: string | null;
+  application_id: string | null;
+  variables: Record<string, string>;
+  status: KakaoDispatchStatus;
+  vendor_message_id: string | null;
+  error_message: string | null;
+  created_at: string;
+}
+
 // Supabase Database type — minimal for typed client
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface Database {
@@ -162,6 +177,7 @@ export interface Database {
       resumes: { Row: Resume; Insert: Partial<Resume> & { teacher_id: string; name: string; birth_date: string; phone: string }; Update: Partial<Resume> };
       applications: { Row: Application; Insert: Partial<Application> & { posting_id: string; position_entry_id: string; teacher_id: string; resume_id: string }; Update: Partial<Application> };
       notifications: { Row: Notification; Insert: Partial<Notification> & { user_id: string; type: string; title: string; message: string }; Update: Partial<Notification> };
+      kakao_dispatch_log: { Row: KakaoDispatchLog; Insert: Partial<KakaoDispatchLog> & { template_code: string; recipient_phone: string; status: KakaoDispatchStatus }; Update: Partial<KakaoDispatchLog> };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

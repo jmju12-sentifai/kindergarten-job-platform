@@ -61,6 +61,12 @@ export default function MyPage() {
       return;
     }
     setTeacherApps((prev) => prev.map((a) => (a.id === appId ? { ...a, status: '지원취소' } : a)));
+    // 알림톡: 기관 담당자에게 지원 취소 알림. fire-and-forget.
+    fetch('/api/kakao/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'cancelled', applicationId: appId }),
+    }).catch(() => { /* swallow */ });
     toast('지원이 취소되었습니다');
   };
 
@@ -102,44 +108,56 @@ export default function MyPage() {
     }
 
     async function fetchTeacherData() {
-      const [resumeRes, appsRes] = await Promise.all([
-        supabase
-          .from('resumes')
-          .select('*')
-          .eq('teacher_id', user!.id)
-          .single(),
-        supabase
-          .from('applications')
-          .select('*, postings(*, institution_profiles(*)), position_entries(*)')
-          .eq('teacher_id', user!.id)
-          .order('applied_at', { ascending: false }),
-      ]);
+      try {
+        const [resumeRes, appsRes] = await Promise.all([
+          supabase
+            .from('resumes')
+            .select('*')
+            .eq('teacher_id', user!.id)
+            .maybeSingle(),
+          supabase
+            .from('applications')
+            .select('*, postings(*, institution_profiles(*)), position_entries(*)')
+            .eq('teacher_id', user!.id)
+            .order('applied_at', { ascending: false }),
+        ]);
 
-      setResume(resumeRes.data);
-      setTeacherApps((appsRes.data as unknown as TeacherApplication[]) || []);
-      setLoading(false);
+        setResume(resumeRes.data);
+        setTeacherApps((appsRes.data as unknown as TeacherApplication[]) || []);
+      } catch (err) {
+        // 한쪽 쿼리가 throw해도 spinner는 반드시 풀어야 함. (무한 로딩 방지)
+        console.error('[mypage] fetchTeacherData failed', err);
+      } finally {
+        setLoading(false);
+      }
     }
 
     async function fetchInstitutionData() {
-      const [postingRes, appsRes] = await Promise.all([
-        supabase
-          .from('postings')
-          .select('*, position_entries(*)')
-          .eq('institution_id', user!.id)
-          .is('archived_at', null)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single(),
-        supabase
-          .from('applications')
-          .select('*, teacher_profiles!applications_teacher_id_fkey(*), resumes(*), position_entries(*), postings!inner(*)')
-          .eq('postings.institution_id', user!.id)
-          .order('applied_at', { ascending: false }),
-      ]);
+      try {
+        const [postingRes, appsRes] = await Promise.all([
+          supabase
+            .from('postings')
+            .select('*, position_entries(*)')
+            .eq('institution_id', user!.id)
+            .is('archived_at', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from('applications')
+            .select('*, teacher_profiles!applications_teacher_id_fkey(*), resumes(*), position_entries(*), postings!inner(*)')
+            .eq('postings.institution_id', user!.id)
+            .order('applied_at', { ascending: false }),
+        ]);
 
-      setPosting(postingRes.data as unknown as (Posting & { position_entries: PositionEntry[] }) | null);
-      setInstitutionApps((appsRes.data as unknown as InstitutionApplication[]) || []);
-      setLoading(false);
+        setPosting(postingRes.data as unknown as (Posting & { position_entries: PositionEntry[] }) | null);
+        setInstitutionApps((appsRes.data as unknown as InstitutionApplication[]) || []);
+      } catch (err) {
+        // 한쪽 쿼리가 throw해도 spinner는 반드시 풀어야 함. (무한 로딩 방지)
+        console.error('[mypage] fetchInstitutionData failed', err);
+      } finally {
+        setLoading(false);
+      }
     }
 
     if (profile!.user_type === 'teacher') {

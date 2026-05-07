@@ -1,5 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Database 타입은 의도적으로 패스하지 않는다.
+// 우리 Database 인터페이스는 supabase-js v2.103+의 GenericTable(Relationships 필드 요구)을
+// 충족하지 못해서, 명시적으로 패스하면 모든 from() 호출이 never 타입으로 깨진다.
+// 기존 createBrowserClient/createServerClient 와 동일하게 untyped(any)로 둔다.
+
 let adminClient: ReturnType<typeof createClient> | null = null;
 
 export function createAdminClient() {

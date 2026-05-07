@@ -44,7 +44,8 @@ export default function JobDetailPage() {
     const supabase = createClient();
     supabase.from('resumes').select('*').eq('teacher_id', user.id).single()
       .then(({ data }: { data: Resume | null }) => setResume(data));
-    supabase.from('applications').select('position_entry_id').eq('posting_id', postingId).eq('teacher_id', user.id)
+    // 취소된 지원(status='지원취소')은 제외 — 다시 같은 포지션에 지원 가능해야 함.
+    supabase.from('applications').select('position_entry_id').eq('posting_id', postingId).eq('teacher_id', user.id).neq('status', '지원취소')
       .then(({ data }: { data: { position_entry_id: string }[] | null }) => { if (data) setAppliedPositions(data.map((a) => a.position_entry_id)); });
   }, [user, profile, postingId]);
 
@@ -59,16 +60,48 @@ export default function JobDetailPage() {
     setSubmitting(true);
     const supabase = createClient();
 
-    const { error } = await supabase.from('applications').insert({
-      posting_id: posting.id,
-      position_entry_id: applyingFor.id,
-      teacher_id: user.id,
-      resume_id: resume.id,
-      answers: [],
-      status: '검토중',
-    });
+    // 같은 포지션에 취소된 지원이 있으면 그 row 를 재활용해 '검토중'으로 되돌린다.
+    // unique (position_entry_id, teacher_id) 제약 때문에 신규 INSERT 는 충돌하므로
+    // 재지원은 UPDATE 경로로 처리. (RLS: "Teacher reapply own" 참조)
+    const { data: existing } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('posting_id', posting.id)
+      .eq('position_entry_id', applyingFor.id)
+      .eq('teacher_id', user.id)
+      .eq('status', '지원취소')
+      .maybeSingle();
 
-    if (!error) {
+    let applicationId: string | null = null;
+    let mutationError: unknown = null;
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('applications')
+        .update({ status: '검토중', resume_id: resume.id, applied_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select('id')
+        .single();
+      applicationId = data?.id ?? null;
+      mutationError = error;
+    } else {
+      const { data, error } = await supabase
+        .from('applications')
+        .insert({
+          posting_id: posting.id,
+          position_entry_id: applyingFor.id,
+          teacher_id: user.id,
+          resume_id: resume.id,
+          answers: [],
+          status: '검토중',
+        })
+        .select('id')
+        .single();
+      applicationId = data?.id ?? null;
+      mutationError = error;
+    }
+
+    if (!mutationError) {
       await supabase.from('notifications').insert({
         user_id: posting.institution_id,
         type: 'application_received',
@@ -77,6 +110,14 @@ export default function JobDetailPage() {
         link: '/mypage',
         read: false,
       });
+      // 알림톡: 기관 담당자에게 지원 접수 알림. 실패해도 UX 영향 없게 fire-and-forget.
+      if (applicationId) {
+        fetch('/api/kakao/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event: 'received', applicationId }),
+        }).catch(() => { /* swallow */ });
+      }
       setAppliedPositions((prev) => [...prev, applyingFor.id]);
       setApplyingFor(null);
       toast('지원이 완료되었습니다');
@@ -109,7 +150,7 @@ export default function JobDetailPage() {
         </Link>
 
         {/* 기관 정보 */}
-        <section className="bg-white border border-border rounded-xl overflow-hidden mb-4">
+        <section className="bg-white border-2 border-[#B5CFB9] rounded-xl overflow-hidden mb-4">
           <div className="flex flex-col sm:flex-row">
             {/* 사진 */}
             <Link href={`/institutions/${posting.institution_id}`} className="w-full h-48 sm:w-[240px] sm:h-auto sm:min-h-[240px] sm:self-stretch bg-[#F7FAF6] flex items-center justify-center flex-shrink-0 sm:border-r border-b sm:border-b-0 border-border overflow-hidden">
@@ -176,7 +217,7 @@ export default function JobDetailPage() {
         </section>
 
         {/* 공고 제목 + 모집교사 태그 + 출퇴근 지역 */}
-        <section className="bg-white border border-border rounded-xl p-5 mb-4">
+        <section className="bg-white border-2 border-[#B5CFB9] rounded-xl p-5 mb-4">
           <h1 className="text-lg font-bold text-foreground mb-3">{posting.title}</h1>
 
           {positions.length > 0 && (
@@ -210,7 +251,7 @@ export default function JobDetailPage() {
         </section>
 
         {/* 공고 내용 (통 텍스트) */}
-        <section className="bg-white border border-border rounded-xl p-5 mb-4">
+        <section className="bg-white border-2 border-[#B5CFB9] rounded-xl p-5 mb-4">
           <h2 className="text-sm font-bold text-foreground mb-3">공고 내용</h2>
           <div className="text-[13px] text-foreground/80 leading-[1.8] whitespace-pre-wrap">
             {posting.description}
@@ -219,7 +260,7 @@ export default function JobDetailPage() {
 
         {/* 지원하기 — 포지션별 버튼 (구직자만) */}
         {isTeacher && daysLeft > 0 && (
-          <section className="bg-white border border-border rounded-xl p-5 mb-4">
+          <section className="bg-white border-2 border-[#B5CFB9] rounded-xl p-5 mb-4">
             <h2 className="text-sm font-bold text-foreground mb-3">지원하기</h2>
             {!resume ? (
               <div className="text-center py-4">
@@ -248,10 +289,19 @@ export default function JobDetailPage() {
         )}
 
         {daysLeft === 0 && (
-          <section className="bg-white border border-border rounded-xl p-5 mb-4 text-center">
+          <section className="bg-white border-2 border-[#B5CFB9] rounded-xl p-5 mb-4 text-center">
             <p className="text-sm text-muted">마감된 공고입니다.</p>
           </section>
         )}
+
+        {/* 맨 아래 목록으로 — 눈에 잘 띄게. 상단 좌측 작은 링크는 그대로 유지. */}
+        <Link
+          href="/jobs"
+          className="flex items-center justify-center gap-2 w-full py-4 mt-2 bg-white border-2 border-[#B5CFB9] text-foreground/80 font-semibold rounded-xl hover:bg-[#EAF5EC] hover:text-[#4EA85E] hover:border-[#4EA85E] transition-colors text-sm"
+        >
+          <Icon name="arrow-left" size={16} />
+          <span>채용공고 목록으로</span>
+        </Link>
       </div>
 
       {/* 지원 모달 */}

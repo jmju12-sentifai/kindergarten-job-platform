@@ -88,6 +88,62 @@ textarea.input-field {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* 이력서 워터마크 — 화면/인쇄 공통 */
+.print-resume {
+  position: relative;
+}
+
+/* 좌상단 뱃지: 로고 + "교집합" */
+.resume-watermark-badge {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 20;
+}
+.resume-watermark-badge img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+.resume-watermark-badge span {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1F2B1F;
+  letter-spacing: 1px;
+}
+
+/* 가운데 큰 옅은 배경 워터마크: 로고 + "교집합" */
+.resume-watermark-bg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 15;
+  opacity: 0.05;
+}
+.resume-watermark-bg img {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+}
+.resume-watermark-bg span {
+  font-size: 44px;
+  font-weight: 800;
+  color: #1F2B1F;
+  letter-spacing: 6px;
+  line-height: 1;
+}
+
 @media print {
   header, footer, nav, .no-print { display: none !important; }
   body { background: white !important; min-height: auto !important; }
@@ -101,19 +157,27 @@ textarea.input-field {
     box-shadow: none !important;
     margin: 0 !important;
     max-width: 100% !important;
-    position: relative;
     transform: none !important;
   }
-  .print-resume::before {
-    content: '';
-    position: absolute;
+
+  /* 인쇄 시 페이지마다 반복: position:fixed 트릭 (Chrome/Edge) */
+  .resume-watermark-badge {
+    position: fixed;
     top: 8mm;
     left: 8mm;
-    width: 18mm;
-    height: 18mm;
-    background: url('/logo1_gyo.png') no-repeat center / contain;
-    opacity: 0.9;
     z-index: 9999;
-    pointer-events: none;
   }
+  .resume-watermark-badge img { width: 12mm; height: 12mm; }
+  .resume-watermark-badge span { font-size: 13pt; letter-spacing: 1.5px; }
+
+  .resume-watermark-bg {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9998;
+    opacity: 0.07;
+  }
+  .resume-watermark-bg img { width: 95mm; height: 95mm; }
+  .resume-watermark-bg span { font-size: 32pt; letter-spacing: 6px; }
 }

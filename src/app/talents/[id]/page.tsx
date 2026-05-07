@@ -27,7 +27,7 @@ export default function ResumeViewPage() {
   const params = useParams();
   const router = useRouter();
   const teacherId = params.id as string;
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const supabase = createClient();
   const resumeRef = React.useRef<HTMLDivElement>(null);
   const scaleWrapperRef = React.useRef<HTMLDivElement>(null);
@@ -37,7 +37,10 @@ export default function ResumeViewPage() {
   const [loading, setLoading] = useState(true);
   const [scale, setScale] = useState(1);
   const [innerHeight, setInnerHeight] = useState<number | null>(null);
+  // 기관이 볼 때만: 이 교사가 내 공고에 지원한 포지션들 (취소 제외, 중복 제거)
+  const [appliedPositions, setAppliedPositions] = useState<string[]>([]);
   const isOwner = user?.id === teacherId;
+  const isInstitutionViewer = profile?.user_type === 'institution' && !isOwner;
 
   useEffect(() => {
     Promise.all([
@@ -49,6 +52,28 @@ export default function ResumeViewPage() {
       setLoading(false);
     });
   }, [teacherId, supabase]);
+
+  // 기관 시점에서만 지원 이력 조회. RLS가 자기 공고 application만 허용하므로 안전.
+  useEffect(() => {
+    if (!isInstitutionViewer || !user?.id) { setAppliedPositions([]); return; }
+    supabase
+      .from('applications')
+      .select('position_entries(position), postings!inner(institution_id), applied_at')
+      .eq('teacher_id', teacherId)
+      .eq('postings.institution_id', user.id)
+      .neq('status', '지원취소')
+      .order('applied_at', { ascending: false })
+      .then(({ data }) => {
+        if (!data) return;
+        const seen = new Set<string>();
+        const positions: string[] = [];
+        for (const row of data as unknown as { position_entries: { position: string } | null }[]) {
+          const pos = row.position_entries?.position;
+          if (pos && !seen.has(pos)) { seen.add(pos); positions.push(pos); }
+        }
+        setAppliedPositions(positions);
+      });
+  }, [isInstitutionViewer, user?.id, teacherId, supabase]);
 
   useEffect(() => {
     if (loading) return;
@@ -125,6 +150,25 @@ export default function ResumeViewPage() {
       {/* 이력서 본문 — PDF와 동일 구조. 모바일에선 뷰포트에 맞춰 축소 */}
       <div ref={scaleWrapperRef} className="resume-scale-wrapper" style={{ height: innerHeight !== null && scale < 1 ? innerHeight * scale : undefined, overflow: scale < 1 ? 'hidden' : undefined }}>
       <div ref={resumeRef} className="border border-[#ccc] shadow-sm print-resume" style={{ width: RESUME_WIDTH, padding: '40px 36px', fontFamily: "'Pretendard Variable', sans-serif", background: '#ffffff', color: '#1F2B1F', transform: scale < 1 ? `scale(${scale})` : undefined, transformOrigin: 'top left' }}>
+
+        {/* 워터마크 — 좌상단 뱃지 (화면/PDF/인쇄 공통) */}
+        <div className="resume-watermark-badge" aria-hidden="true">
+          <img src="/logo1_gyo.png" alt="" />
+          <span>교집합</span>
+        </div>
+        {/* 워터마크 — 가운데 큰 옅은 배경 (화면/PDF/인쇄 공통) */}
+        <div className="resume-watermark-bg" aria-hidden="true">
+          <img src="/logo1_gyo.png" alt="" />
+          <span>교집합</span>
+        </div>
+
+        {/* 지원분야 — 기관이 자기 공고로 지원받은 경우에만 노출. PDF/인쇄에도 함께 찍힘. */}
+        {appliedPositions.length > 0 && (
+          <p className="mb-2 text-[12px]" style={{ color: '#1F2B1F' }}>
+            <span style={{ color: '#666' }}>지원분야: </span>
+            <span style={{ fontWeight: 600 }}>{appliedPositions.join(', ')}</span>
+          </p>
+        )}
 
         {/* 제목 */}
         <h2 className="text-center text-[22px] font-bold tracking-[6px] pb-3 mb-6" style={{ color: '#1F2B1F', borderBottom: '2px solid #1F2B1F' }}>이 력 서</h2>
@@ -211,9 +255,9 @@ export default function ResumeViewPage() {
           </Section>
         )}
 
-        {/* 포트폴리오 */}
+        {/* 추가 안내 내용 */}
         {resume.portfolio && (
-          <Section title="포트폴리오 / 자기개발">
+          <Section title="추가 안내 내용">
             <p className="text-[12px] leading-[1.8] whitespace-pre-wrap" style={{ color: '#333' }}>{resume.portfolio}</p>
           </Section>
         )}

@@ -99,12 +99,12 @@ export default function NewJobPage() {
     if (!deadline.trim()) { toast('마감일을 입력해주세요.', 'error'); return; }
 
     if (isNewBlocked) {
-      toast(`공고 등록 후 48시간 동안은 새 공고를 올릴 수 없습니다. (${hoursLeft}시간 남음)`, 'error');
+      toast(`공고 등록 후 24시간 동안은 새 공고를 올릴 수 없습니다. (${hoursLeft}시간 남음)`, 'error');
       return;
     }
 
     if (!existingPostingId) {
-      if (!confirm('공고를 등록하시겠습니까?\n등록 후 48시간 동안은 다른 공고를 올릴 수 없습니다. 수정/삭제는 언제든 가능합니다.')) return;
+      if (!confirm('공고를 등록하시겠습니까?\n등록 후 24시간 동안은 다른 공고를 올릴 수 없습니다. 수정/삭제는 언제든 가능합니다.')) return;
     }
 
     setSubmitting(true);
@@ -129,7 +129,7 @@ export default function NewJobPage() {
       if (error) { toast('공고 등록 중 오류가 발생했습니다.', 'error'); setSubmitting(false); return; }
       postingId = data?.id ?? null;
 
-      const newLockUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      const newLockUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       await supabase.from('institution_profiles')
         .update({ last_posting_locked_until: newLockUntil })
         .eq('id', user.id);
@@ -175,9 +175,9 @@ export default function NewJobPage() {
       {!existingPostingId && (
         <div className={`rounded-lg p-3 mb-4 text-xs leading-[1.7] ${isNewBlocked ? 'bg-[#E86830]/10 border border-[#E86830]/30 text-[#E86830]' : 'bg-[#EAF5EC] border border-[#A5D6A7]/50 text-foreground/80'}`}>
           {isNewBlocked ? (
-            <>공고 등록 후 48시간 동안은 새 공고를 올릴 수 없습니다. <b>{hoursLeft}시간 남음.</b></>
+            <>공고 등록 후 24시간 동안은 새 공고를 올릴 수 없습니다. <b>{hoursLeft}시간 남음.</b></>
           ) : (
-            <>공고 등록 후 48시간 동안은 다른 공고를 올릴 수 없습니다. 수정과 삭제는 언제든 가능합니다.<br />담임교사와 부담임교사 모두 구하실 땐 한 공고에 함께 등록해 주세요.</>
+            <>공고 등록 후 24시간 동안은 다른 공고를 올릴 수 없습니다. 수정과 삭제는 언제든 가능합니다.<br />담임교사와 부담임교사 모두 구하실 땐 한 공고에 함께 등록해 주세요.</>
           )}
         </div>
       )}
