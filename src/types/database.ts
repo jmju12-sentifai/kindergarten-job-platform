@@ -165,7 +165,6 @@ export interface KakaoDispatchLog {
 }
 
 // Supabase Database type — minimal for typed client
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface Database {
   public: {
     Tables: {
@@ -180,7 +179,21 @@ export interface Database {
       kakao_dispatch_log: { Row: KakaoDispatchLog; Insert: Partial<KakaoDispatchLog> & { template_code: string; recipient_phone: string; status: KakaoDispatchStatus }; Update: Partial<KakaoDispatchLog> };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      // v11: /jobs 통합 검색 RPC. setof postings 반환이라 .select() 임베드 가능.
+      search_active_postings: {
+        Args: {
+          p_search?: string | null;
+          p_region?: string | null;
+          p_sub_region?: string | null;
+          p_position?: string | null;
+          p_sort?: 'latest' | 'deadline';
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Posting[];
+      };
+    };
     Enums: Record<string, never>;
   };
 }

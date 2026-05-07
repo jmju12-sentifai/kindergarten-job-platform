@@ -1,18 +1,26 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import Icon from '@/components/Icon';
-import { PageSpinner } from '@/components/Spinner';
+import Spinner, { PageSpinner } from '@/components/Spinner';
 import type { PostingWithPositions } from '@/types/database';
 import { POSITIONS, POSITION_COLORS, type PositionType } from '@/constants/positions';
 import { REGION_LIST, REGIONS } from '@/constants/regions';
 
+const PAGE_SIZE = 30;
+
 function getDaysLeft(deadline: string) {
   return Math.max(0, Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 }
+
+// 카드 표시/필터에 필요한 컬럼만 선택 — 페이로드 다이어트
+const POSTING_CARD_COLUMNS =
+  'id, institution_id, title, deadline, commute_areas, archived_at, created_at, updated_at, ' +
+  'position_entries(id, position), ' +
+  'institution_profiles(id, name, address, address_short)';
 
 function JobsContent() {
   const searchParams = useSearchParams();
@@ -22,73 +30,84 @@ function JobsContent() {
   const initialPosition = searchParams.get('position') || '';
 
   const [postings, setPostings] = useState<PostingWithPositions[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
   const [searchQuery, setSearchQuery] = useState(initialQ);
+  // 검색어는 디바운스해서 DB 호출 트리거
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQ);
   const [region, setRegion] = useState(initialRegion);
   const [subRegion, setSubRegion] = useState(initialSub);
   const [position, setPosition] = useState(initialPosition);
   const [sort, setSort] = useState<'latest' | 'deadline'>('latest');
 
+  // race condition 방지: 가장 최근 요청만 반영
+  const reqIdRef = useRef(0);
+
   useEffect(() => {
-    const supabase = createClient();
-    (async () => {
-      // 마감일 + 1개월이 지난 공고 미노출
-      const oneMonthAgo = new Date();
-      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      const { data } = await supabase
-        .from('postings')
-        .select('*, position_entries(*), institution_profiles!inner(*)')
-        .is('archived_at', null)
-        .gte('deadline', oneMonthAgo.toISOString().split('T')[0])
-        .order('created_at', { ascending: false });
-      setPostings((data as PostingWithPositions[] | null) ?? []);
-      setLoading(false);
-    })();
-  }, []);
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
-  const filtered = useMemo(() => {
-    let list = [...postings];
+  const fetchPage = useCallback(
+    async (offset: number, append: boolean) => {
+      const supabase = createClient();
+      const myReq = ++reqIdRef.current;
+      const { data, error } = await supabase
+        .rpc('search_active_postings', {
+          p_search: debouncedQuery || null,
+          p_region: region || null,
+          p_sub_region: subRegion || null,
+          p_position: position || null,
+          p_sort: sort,
+          p_limit: PAGE_SIZE,
+          p_offset: offset,
+        })
+        .select(POSTING_CARD_COLUMNS);
+      // 더 새로운 요청이 이미 떴으면 결과 무시
+      if (myReq !== reqIdRef.current) return;
+      if (error) {
+        // 정책상 에러는 조용히 빈 결과로 — 콘솔에만 남김
+        console.error('search_active_postings failed', error);
+        if (!append) setPostings([]);
+        setHasMore(false);
+        return;
+      }
+      const rows = ((data ?? []) as unknown) as PostingWithPositions[];
+      setHasMore(rows.length === PAGE_SIZE);
+      setPostings((prev) => (append ? [...prev, ...rows] : rows));
+    },
+    [debouncedQuery, region, subRegion, position, sort]
+  );
 
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.institution_profiles.name.toLowerCase().includes(q) ||
-          p.institution_profiles.address.toLowerCase().includes(q)
-      );
-    }
-
-    if (region) {
-      list = list.filter((p) => {
-        const addr = p.institution_profiles.address || '';
-        const commutes = (p.commute_areas || []) as string[];
-        const matchRegion = addr.includes(region)
-          || commutes.some((c) => c.includes(region));
-        if (!matchRegion) return false;
-        if (subRegion) {
-          const matchSub = addr.includes(subRegion)
-            || commutes.some((c) => c.includes(subRegion));
-          if (!matchSub) return false;
-        }
-        return true;
+  // 필터 변경 시 첫 페이지부터 재조회
+  useEffect(() => {
+    let cancelled = false;
+    if (initialLoading) {
+      fetchPage(0, false).finally(() => {
+        if (!cancelled) setInitialLoading(false);
+      });
+    } else {
+      setRefreshing(true);
+      fetchPage(0, false).finally(() => {
+        if (!cancelled) setRefreshing(false);
       });
     }
+    return () => {
+      cancelled = true;
+    };
+    // initialLoading 은 한 번만 영향 → deps 에서 제외해 무한 루프 방지
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchPage]);
 
-    if (position) {
-      list = list.filter((p) =>
-        p.position_entries.some((pe) => pe.position === position)
-      );
-    }
-
-    if (sort === 'deadline') {
-      list.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
-    } else {
-      list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    }
-
-    return list;
-  }, [postings, searchQuery, region, subRegion, position, sort]);
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    await fetchPage(postings.length, true);
+    setLoadingMore(false);
+  };
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -97,9 +116,9 @@ function JobsContent() {
     setPosition('');
   };
 
-  const hasFilters = searchQuery || region || subRegion || position;
+  const hasFilters = !!(searchQuery || region || subRegion || position);
 
-  if (loading) {
+  if (initialLoading) {
     return <PageSpinner />;
   }
 
@@ -199,7 +218,11 @@ function JobsContent() {
       {/* Sort + count */}
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-muted">
-          총 <span className="font-semibold text-foreground">{filtered.length}</span>건
+          현재 <span className="font-semibold text-foreground">{postings.length}</span>건
+          {hasMore && <span className="text-muted/70"> +</span>}
+          {refreshing && (
+            <span className="ml-2 inline-flex items-center align-middle"><Spinner size={12} className="text-muted/70" /></span>
+          )}
         </p>
         <select
           value={sort}
@@ -213,7 +236,7 @@ function JobsContent() {
 
       {/* Job cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-        {filtered.map((posting) => {
+        {postings.map((posting) => {
           const daysLeft = getDaysLeft(posting.deadline);
           const inst = posting.institution_profiles;
           const positions = posting.position_entries.map((pe) => pe.position);
@@ -269,7 +292,7 @@ function JobsContent() {
         })}
       </div>
 
-      {filtered.length === 0 && (
+      {postings.length === 0 && !refreshing && (
         <div className="text-center py-16">
           <p className="text-sm text-muted mb-2">검색 결과가 없습니다.</p>
           {hasFilters && (
@@ -277,6 +300,19 @@ function JobsContent() {
               필터 초기화
             </button>
           )}
+        </div>
+      )}
+
+      {hasMore && postings.length > 0 && (
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-[#C5D4CA] bg-white text-sm text-foreground hover:bg-[#EAF5EC] hover:border-[#A5D6A7] disabled:opacity-60"
+          >
+            {loadingMore ? <Spinner size={14} className="text-muted" /> : null}
+            더 보기
+          </button>
         </div>
       )}
     </div>

@@ -33,13 +33,17 @@ export default function Home() {
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
     supabase
       .from('postings')
-      .select('*, position_entries(*), institution_profiles(*)')
+      .select(
+        'id, institution_id, title, deadline, commute_areas, archived_at, created_at, updated_at, ' +
+          'position_entries(id, position), ' +
+          'institution_profiles(id, name, address_short)'
+      )
       .is('archived_at', null)
       .gte('deadline', oneMonthAgo.toISOString().split('T')[0])
       .order('created_at', { ascending: false })
       .limit(6)
-      .then(({ data }: { data: PostingWithPositions[] | null }) => {
-        if (data) setPostings(data);
+      .then(({ data }) => {
+        if (data) setPostings(data as unknown as PostingWithPositions[]);
         setLoading(false);
       });
   }, []);
