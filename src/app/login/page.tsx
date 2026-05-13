@@ -74,6 +74,7 @@ function LoginContent() {
         <div className="text-center mb-6">
           <h1 className="text-xl font-bold text-foreground">로그인</h1>
           <p className="text-sm text-muted mt-1">교집합에 오신 걸 환영합니다</p>
+          <p className="text-xs text-muted/70 mt-2">카카오톡으로 로그인시 1-2초가량 소요됩니다. 잠시만 기다려주세요!</p>
         </div>
 
         <button onClick={handleKakao} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm mb-4" style={{ background: '#FEE500', color: '#191919' }}>

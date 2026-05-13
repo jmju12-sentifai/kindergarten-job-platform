@@ -34,11 +34,13 @@ export default function ResumeViewPage() {
 
   const [resume, setResume] = useState<Resume | null>(null);
   const [tp, setTp] = useState<TeacherProfile | null>(null);
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [scale, setScale] = useState(1);
   const [innerHeight, setInnerHeight] = useState<number | null>(null);
   // 기관이 볼 때만: 이 교사가 내 공고에 지원한 포지션들 (취소 제외, 중복 제거)
   const [appliedPositions, setAppliedPositions] = useState<string[]>([]);
+  const [appliedLoading, setAppliedLoading] = useState(true);
   const isOwner = user?.id === teacherId;
   const isInstitutionViewer = profile?.user_type === 'institution' && !isOwner;
 
@@ -46,16 +48,18 @@ export default function ResumeViewPage() {
     Promise.all([
       supabase.from('resumes').select('*').eq('teacher_id', teacherId).single(),
       supabase.from('teacher_profiles').select('*').eq('id', teacherId).single(),
-    ]).then(([r, p]) => {
+      supabase.from('profiles').select('email').eq('id', teacherId).single(),
+    ]).then(([r, p, prof]) => {
       setResume(r.data);
       setTp(p.data);
+      setEmail((prof.data as { email: string } | null)?.email ?? '');
       setLoading(false);
     });
   }, [teacherId, supabase]);
 
   // 기관 시점에서만 지원 이력 조회. RLS가 자기 공고 application만 허용하므로 안전.
   useEffect(() => {
-    if (!isInstitutionViewer || !user?.id) { setAppliedPositions([]); return; }
+    if (!isInstitutionViewer || !user?.id) { setAppliedPositions([]); setAppliedLoading(false); return; }
     supabase
       .from('applications')
       .select('position_entries(position), postings!inner(institution_id), applied_at')
@@ -64,7 +68,7 @@ export default function ResumeViewPage() {
       .neq('status', '지원취소')
       .order('applied_at', { ascending: false })
       .then(({ data }) => {
-        if (!data) return;
+        if (!data) { setAppliedLoading(false); return; }
         const seen = new Set<string>();
         const positions: string[] = [];
         for (const row of data as unknown as { position_entries: { position: string } | null }[]) {
@@ -72,6 +76,7 @@ export default function ResumeViewPage() {
           if (pos && !seen.has(pos)) { seen.add(pos); positions.push(pos); }
         }
         setAppliedPositions(positions);
+        setAppliedLoading(false);
       });
   }, [isInstitutionViewer, user?.id, teacherId, supabase]);
 
@@ -113,6 +118,30 @@ export default function ResumeViewPage() {
       <div className="max-w-[800px] mx-auto px-4 py-16 text-center">
         <Icon name="user" size={40} className="text-muted mx-auto mb-3" />
         <p className="text-sm text-muted">이력서를 찾을 수 없습니다</p>
+      </div>
+    );
+  }
+
+  // 교사가 타인 이력서 접근 시 차단 (본인 이력서는 허용)
+  if (profile?.user_type === 'teacher' && !isOwner) {
+    return (
+      <div className="max-w-[800px] mx-auto px-4 py-16 text-center">
+        <Icon name="user" size={40} className="text-muted mx-auto mb-3" />
+        <p className="text-sm text-muted">접근 권한이 없습니다</p>
+      </div>
+    );
+  }
+
+  // 기관 로그인 시: 지원 이력 로딩 중
+  if (isInstitutionViewer && appliedLoading) return <PageSpinner />;
+
+  // 기관 로그인 시: 이 교사가 해당 기관에 지원한 이력이 없으면 접근 차단
+  if (isInstitutionViewer && appliedPositions.length === 0) {
+    return (
+      <div className="max-w-[800px] mx-auto px-4 py-16 text-center">
+        <Icon name="user" size={40} className="text-muted mx-auto mb-3" />
+        <p className="text-sm text-muted">접근 권한이 없습니다</p>
+        <p className="text-xs text-muted mt-1">해당 교사가 귀 기관 공고에 지원한 경우에만 이력서를 확인할 수 있습니다</p>
       </div>
     );
   }
@@ -188,7 +217,7 @@ export default function ResumeViewPage() {
           <table className="flex-1 border-collapse text-[12px]" style={{ borderTop: '2px solid #222' }}>
             <tbody>
               <Row label="성명" value={resume.name} label2="생년월일" value2={`${formatBirth(resume.birth_date)} (만 ${age}세)`} />
-              <Row label="연락처" value={resume.phone} label2="이메일" value2={tp?.address ? '' : ''} />
+              <Row label="연락처" value={resume.phone} label2="이메일" value2={email} />
               <Row label="주소" value={tp?.address || ''} colSpan />
               <Row label="졸업대학" value={resume.affiliation || ''} colSpan />
             </tbody>
@@ -268,6 +297,18 @@ export default function ResumeViewPage() {
         </p>
       </div>
       </div>
+
+      {/* 하단 인재 정보 목록으로 버튼 — 기관 로그인 시에만, 인쇄 시 숨김 */}
+      {isInstitutionViewer && (
+        <button
+          onClick={() => router.back()}
+          style={{ maxWidth: RESUME_WIDTH }}
+          className="no-print flex items-center justify-center gap-2 w-full py-4 mt-4 bg-white border-2 border-[#B5CFB9] text-foreground/80 font-semibold rounded-xl hover:bg-[#EAF5EC] hover:text-[#4EA85E] hover:border-[#4EA85E] transition-colors text-sm"
+        >
+          <Icon name="arrow-left" size={16} />
+          <span>인재 정보 목록으로</span>
+        </button>
+      )}
     </div>
   );
 }

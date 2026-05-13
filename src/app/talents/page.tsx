@@ -5,25 +5,39 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import Icon from '@/components/Icon';
 import { PageSpinner } from '@/components/Spinner';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Resume, TeacherProfile } from '@/types/database';
 
 type ResumeWithProfile = Resume & { teacher_profiles: TeacherProfile };
 
 export default function TalentsPage() {
+  const { user, profile, loading: authLoading } = useAuth();
   const [resumes, setResumes] = useState<ResumeWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user || profile?.user_type !== 'institution') { setLoading(false); return; }
     const supabase = createClient();
-    supabase.from('resumes')
-      .select('*, teacher_profiles(*)')
-      .order('updated_at', { ascending: false })
-      .then(({ data }: { data: ResumeWithProfile[] | null }) => {
-        setResumes(data ?? []);
+    // 자기 기관 공고에 지원(취소 제외)한 교사 ID 목록 조회
+    supabase
+      .from('applications')
+      .select('teacher_id, postings!inner(institution_id)')
+      .eq('postings.institution_id', user.id)
+      .neq('status', '지원취소')
+      .then(async ({ data: apps }) => {
+        if (!apps || apps.length === 0) { setLoading(false); return; }
+        const teacherIds = [...new Set(apps.map((a) => a.teacher_id as string))];
+        const { data } = await supabase
+          .from('resumes')
+          .select('*, teacher_profiles(*)')
+          .in('teacher_id', teacherIds)
+          .order('updated_at', { ascending: false });
+        setResumes((data as ResumeWithProfile[]) ?? []);
         setLoading(false);
       });
-  }, []);
+  }, [authLoading, user, profile]);
 
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return resumes;
@@ -35,7 +49,25 @@ export default function TalentsPage() {
     );
   }, [resumes, searchQuery]);
 
-  if (loading) return <PageSpinner />;
+  if (authLoading || loading) return <PageSpinner />;
+
+  if (profile?.user_type !== 'institution') {
+    return (
+      <div className="max-w-[1200px] mx-auto px-4 py-16 text-center">
+        <Icon name="user" size={40} className="text-muted mx-auto mb-3" />
+        <p className="text-sm text-muted">접근 권한이 없습니다</p>
+      </div>
+    );
+  }
+
+  if (resumes.length === 0) {
+    return (
+      <div className="max-w-[1200px] mx-auto px-4 py-16 text-center">
+        <Icon name="user" size={40} className="text-muted mx-auto mb-3" />
+        <p className="text-sm text-muted">아직 지원한 인재가 없습니다.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-6">
@@ -89,7 +121,7 @@ export default function TalentsPage() {
       ) : (
         <div className="text-center py-16 bg-white border border-border rounded-xl">
           <Icon name="user" size={32} className="text-muted/30 mx-auto mb-2" />
-          <p className="text-sm text-muted">등록된 인재가 없습니다.</p>
+          <p className="text-sm text-muted">아직 지원한 인재가 없습니다.</p>
         </div>
       )}
     </div>

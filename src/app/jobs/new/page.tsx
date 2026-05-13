@@ -20,8 +20,8 @@ export default function NewJobPage() {
   const [existingPostingId, setExistingPostingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  // 마감일: 기본 한달 후, 수정 불가
-  const [deadline] = useState(() => {
+  // 마감일: 기본 한달 후, 직접 수정 가능
+  const [deadline, setDeadline] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() + 1);
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
@@ -303,12 +303,18 @@ export default function NewJobPage() {
           />
         </section>
 
-        {/* 마감일 (자동 한달, 수정불가) */}
+        {/* 마감일 */}
         <section className="bg-white border border-border rounded-xl p-5">
           <label className="block text-xs font-semibold text-foreground mb-1">모집 마감일</label>
           <div className="flex items-center gap-3">
-            <input type="text" value={deadline} readOnly className="input-field max-w-[200px] bg-gray-50 text-muted" />
-            <span className="text-[11px] text-muted">등록일로부터 1개월 자동 설정</span>
+            <input
+              type="text"
+              value={deadline}
+              onChange={(e) => setDeadline(formatDate(e.target.value))}
+              placeholder="YYYY/MM/DD"
+              className="input-field max-w-[200px]"
+            />
+            <span className="text-[11px] text-muted">기본값: 등록일로부터 1개월</span>
           </div>
         </section>
 

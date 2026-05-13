@@ -11,12 +11,13 @@ import type { PostingWithPositions } from '@/types/database';
 import { POSITIONS, POSITION_COLORS, type PositionType } from '@/constants/positions';
 import { REGION_LIST, REGIONS } from '@/constants/regions';
 
-const positionIcons: Record<PositionType, 'star' | 'user' | 'users' | 'clock' | 'sparkle'> = {
+const positionIcons: Record<PositionType, 'star' | 'user' | 'users' | 'clock' | 'sparkle' | 'leaf'> = {
   '원감': 'star',
   '담임교사': 'user',
   '부담임+방과후교사': 'users',
   '방과후교사': 'clock',
   '단기대체교사': 'sparkle',
+  '그 외 교사': 'leaf',
 };
 
 export default function Home() {
@@ -29,8 +30,7 @@ export default function Home() {
   const userType = profile?.user_type;
 
   useEffect(() => {
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    const today = new Date().toISOString().split('T')[0];
     supabase
       .from('postings')
       .select(
@@ -39,7 +39,7 @@ export default function Home() {
           'institution_profiles(id, name, address_short)'
       )
       .is('archived_at', null)
-      .gte('deadline', oneMonthAgo.toISOString().split('T')[0])
+      .gte('deadline', today)
       .order('created_at', { ascending: false })
       .limit(6)
       .then(({ data }) => {

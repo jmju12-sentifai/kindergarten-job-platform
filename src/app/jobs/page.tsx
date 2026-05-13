@@ -75,7 +75,9 @@ function JobsContent() {
         setHasMore(false);
         return;
       }
-      const rows = ((data ?? []) as unknown) as PostingWithPositions[];
+      const today = new Date().toISOString().split('T')[0];
+      const rows = (((data ?? []) as unknown) as PostingWithPositions[])
+        .filter((p) => p.deadline >= today);
       setHasMore(rows.length === PAGE_SIZE);
       setPostings((prev) => (append ? [...prev, ...rows] : rows));
     },

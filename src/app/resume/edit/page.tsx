@@ -406,6 +406,15 @@ export default function ResumeEdit() {
           </>
         )}
       </div>
+
+      {/* 마이페이지로 — 하단 큰 버튼 */}
+      <button
+        onClick={() => router.back()}
+        className="no-print flex items-center justify-center gap-2 w-full py-4 mt-2 mb-6 bg-white border-2 border-[#B5CFB9] text-foreground/80 font-semibold rounded-xl hover:bg-[#EAF5EC] hover:text-[#4EA85E] hover:border-[#4EA85E] transition-colors text-sm"
+      >
+        <Icon name="arrow-left" size={16} />
+        <span>마이페이지로</span>
+      </button>
     </div>
   );
 }

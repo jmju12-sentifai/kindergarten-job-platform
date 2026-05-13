@@ -4,6 +4,7 @@ export const POSITIONS = [
   '방과후교사',
   '단기대체교사',
   '원감',
+  '그 외 교사',
 ] as const;
 export type PositionType = typeof POSITIONS[number];
 
@@ -13,6 +14,7 @@ export const POSITION_COLORS: Record<PositionType, { bg: string; text: string; b
   '부담임+방과후교사': { bg: 'bg-pastel-mint',     text: 'text-pastel-mint-ink',     border: 'border-pastel-mint-ink/20' },
   '방과후교사':       { bg: 'bg-pastel-sky',      text: 'text-pastel-sky-ink',      border: 'border-pastel-sky-ink/20' },
   '단기대체교사':     { bg: 'bg-pastel-lemon',    text: 'text-pastel-lemon-ink',    border: 'border-pastel-lemon-ink/20' },
+  '그 외 교사':       { bg: 'bg-pastel-rose',     text: 'text-pastel-rose-ink',     border: 'border-pastel-rose-ink/20' },
 };
 
 export const CAREER_ROLES = [
@@ -24,5 +26,6 @@ export const CAREER_ROLES = [
   '원장',
   '아르바이트',
   '실습',
+  '그 외 교사',
 ] as const;
 export type CareerRole = typeof CAREER_ROLES[number];
