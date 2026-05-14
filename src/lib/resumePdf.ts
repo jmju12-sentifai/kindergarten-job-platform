@@ -42,7 +42,7 @@ export async function generateResumePdf(element: HTMLElement, filename: string) 
   }
 
   const canvas = await html2canvas(clone, {
-    scale: 2,
+    scale: 1.5,
     useCORS: true,
     backgroundColor: '#ffffff',
     scrollY: 0,
@@ -50,7 +50,7 @@ export async function generateResumePdf(element: HTMLElement, filename: string) 
   });
   document.body.removeChild(clone);
 
-  const imgData = canvas.toDataURL('image/png');
+  const imgData = canvas.toDataURL('image/jpeg', 0.85);
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pdfW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
@@ -64,15 +64,16 @@ export async function generateResumePdf(element: HTMLElement, filename: string) 
 
   if (contentH <= pageContentH) {
     // 1페이지에 본문이 다 들어감 — 일반적인 이력서 케이스
-    pdf.addImage(imgData, 'PNG', marginX, marginY, contentW, contentH);
+    pdf.addImage(imgData, 'JPEG', marginX, marginY, contentW, contentH, 'resume-img', 'FAST');
   } else {
     // 멀티페이지 — 같은 캡쳐 이미지를 페이지마다 -offset 위치로 박아서 분할.
+    // alias('resume-img')를 지정해 페이지마다 이미지 바이너리가 재임베드되지 않게 한다.
     // 페이지 경계의 위/아래 마진 영역은 흰 사각형으로 마스킹해 잔상 차단.
     let offset = 0;
     let isFirst = true;
     while (offset < contentH) {
       if (!isFirst) pdf.addPage();
-      pdf.addImage(imgData, 'PNG', marginX, marginY - offset, contentW, contentH);
+      pdf.addImage(imgData, 'JPEG', marginX, marginY - offset, contentW, contentH, 'resume-img', 'FAST');
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pdfW, marginY, 'F');
       pdf.rect(0, pageH - marginY, pdfW, marginY, 'F');

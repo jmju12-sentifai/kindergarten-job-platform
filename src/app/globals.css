@@ -162,9 +162,11 @@ textarea.input-field {
     transform: none !important;
   }
 
-  /* 인쇄 시 페이지마다 반복: position:fixed 트릭 (Chrome/Edge) */
+  /* 좌상단 뱃지는 1페이지에만 표시.
+     position:fixed 로 두면 Chrome/Edge가 모든 페이지에 반복 렌더링하면서
+     글자가 겹쳐 보이는 문제가 있어 absolute 로 고정해 문서 최상단에만 찍히게 한다. */
   .resume-watermark-badge {
-    position: fixed;
+    position: absolute;
     top: 8mm;
     left: 8mm;
     z-index: 9999;
