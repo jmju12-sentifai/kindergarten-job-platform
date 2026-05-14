@@ -309,6 +309,18 @@ export default function ResumeViewPage() {
           <span>인재 정보 목록으로</span>
         </button>
       )}
+
+      {/* 하단 마이페이지로 버튼 — 본인(교사)일 때만, 인쇄 시 숨김 */}
+      {isOwner && (
+        <Link
+          href="/mypage"
+          style={{ maxWidth: RESUME_WIDTH }}
+          className="no-print flex items-center justify-center gap-2 w-full py-4 mt-4 bg-white border-2 border-[#B5CFB9] text-foreground/80 font-semibold rounded-xl hover:bg-[#EAF5EC] hover:text-[#4EA85E] hover:border-[#4EA85E] transition-colors text-sm"
+        >
+          <Icon name="arrow-left" size={16} />
+          <span>마이페이지로</span>
+        </Link>
+      )}
     </div>
   );
 }

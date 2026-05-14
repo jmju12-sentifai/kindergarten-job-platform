@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/Icon';
 import { PageSpinner, ButtonSpinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
-import { formatDate, dateToISO } from '@/lib/format';
+import { dateToISO } from '@/lib/format';
 import type { Posting, PositionEntry } from '@/types/database';
 import { POSITIONS, POSITION_COLORS, type PositionType } from '@/constants/positions';
 
@@ -310,11 +310,11 @@ export default function NewJobPage() {
             <input
               type="text"
               value={deadline}
-              onChange={(e) => setDeadline(formatDate(e.target.value))}
-              placeholder="YYYY/MM/DD"
-              className="input-field max-w-[200px]"
+              readOnly
+              disabled
+              className="input-field max-w-[200px] bg-gray-100 cursor-not-allowed text-muted"
             />
-            <span className="text-[11px] text-muted">기본값: 등록일로부터 1개월</span>
+            <span className="text-[11px] text-muted">등록일로부터 1개월 자동 설정</span>
           </div>
         </section>
 
